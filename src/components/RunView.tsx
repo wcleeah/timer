@@ -9,21 +9,26 @@ import {
   uncompleteTimer,
   updateRunNodeNote,
 } from "@/app/actions/runs";
+import { DurationFields } from "@/components/DurationFields";
 import type { RunNode } from "@/db/schema";
-import {
-  displayMs,
-  formatDuration,
-  hasHitZero,
-  parseDurationInput,
-} from "@/lib/timer-math";
-import type { TreeNode } from "@/lib/tree";
+import { displayMs, formatDuration, hasHitZero } from "@/lib/timer-math";
+import { patchTreeNode, type TreeNode } from "@/lib/tree";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 const field =
   "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent";
 const ghostBtn =
-  "rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:bg-surface-2 hover:text-foreground disabled:opacity-50";
+  "rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:bg-surface-2 hover:text-foreground";
+
+type OptimisticUpdate = (tree: TreeNode<RunNode>[]) => TreeNode<RunNode>[];
 
 function playBeep() {
   try {
@@ -44,14 +49,23 @@ function playBeep() {
   }
 }
 
+function asDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null;
+  return value instanceof Date ? value : new Date(value);
+}
+
 function LiveTime({ node }: { node: RunNode }) {
   const [now, setNow] = useState(() => Date.now());
+  const running =
+    node.status === "running"
+      ? `${String(node.endsAt)}:${String(node.runningSince)}`
+      : "stopped";
 
   useEffect(() => {
     if (node.status !== "running") return;
     const id = window.setInterval(() => setNow(Date.now()), 200);
     return () => window.clearInterval(id);
-  }, [node.status, node.endsAt, node.runningSince, node.id]);
+  }, [node.status, running]);
 
   return (
     <span className="font-mono text-2xl tracking-tight tabular-nums text-code">
@@ -60,20 +74,116 @@ function LiveTime({ node }: { node: RunNode }) {
   );
 }
 
-function TimerCard({ node }: { node: RunNode }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
+function optimisticStart(node: RunNode): Partial<RunNode> {
+  const now = Date.now();
+  if (node.mode === "countdown") {
+    const remaining = node.remainingMs ?? node.durationMs ?? 0;
+    return {
+      status: "running",
+      endsAt: new Date(now + remaining),
+      runningSince: null,
+    };
+  }
+  return {
+    status: "running",
+    runningSince: new Date(now),
+    endsAt: null,
+  };
+}
+
+function optimisticPause(node: RunNode): Partial<RunNode> {
+  const now = Date.now();
+  if (node.mode === "countdown") {
+    const endsAt = asDate(node.endsAt);
+    const remaining = endsAt
+      ? Math.max(0, endsAt.getTime() - now)
+      : (node.remainingMs ?? 0);
+    if (remaining <= 0) {
+      return {
+        status: "completed",
+        remainingMs: 0,
+        endsAt: null,
+        completedAt: new Date(now),
+      };
+    }
+    return {
+      status: "paused",
+      remainingMs: remaining,
+      endsAt: null,
+    };
+  }
+
+  const runningSince = asDate(node.runningSince);
+  const elapsed =
+    (node.elapsedMs ?? 0) + (runningSince ? now - runningSince.getTime() : 0);
+  return {
+    status: "paused",
+    elapsedMs: elapsed,
+    runningSince: null,
+  };
+}
+
+function optimisticReset(node: RunNode): Partial<RunNode> {
+  return {
+    status: "idle",
+    remainingMs: node.durationMs ?? 0,
+    elapsedMs: 0,
+    endsAt: null,
+    runningSince: null,
+    completedAt: null,
+  };
+}
+
+function optimisticComplete(node: RunNode): Partial<RunNode> {
+  const now = Date.now();
+  let remainingMs = node.remainingMs ?? node.durationMs ?? 0;
+  let elapsedMs = node.elapsedMs ?? 0;
+
+  if (node.status === "running") {
+    const endsAt = asDate(node.endsAt);
+    const runningSince = asDate(node.runningSince);
+    if (node.mode === "countdown" && endsAt) {
+      remainingMs = Math.max(0, endsAt.getTime() - now);
+    }
+    if (node.mode === "stopwatch" && runningSince) {
+      elapsedMs += now - runningSince.getTime();
+    }
+  }
+
+  return {
+    status: "completed",
+    remainingMs,
+    elapsedMs,
+    endsAt: null,
+    runningSince: null,
+    completedAt: new Date(now),
+  };
+}
+
+function TimerCard({
+  node,
+  runAction,
+}: {
+  node: RunNode;
+  runAction: (update: OptimisticUpdate, action: () => Promise<void>) => void;
+}) {
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState("");
+  const [editMs, setEditMs] = useState(0);
   const [alarming, setAlarming] = useState(false);
   const alarmedRef = useRef(false);
-
-  const run = (fn: () => Promise<void>) => {
-    startTransition(async () => {
-      await fn();
-      router.refresh();
-    });
-  };
+  const completeAtZero = useEffectEvent(() => {
+    runAction(
+      (tree) =>
+        patchTreeNode(tree, node.id, {
+          status: "completed",
+          remainingMs: 0,
+          endsAt: null,
+          runningSince: null,
+          completedAt: new Date(),
+        }),
+      () => completeTimer(node.id),
+    );
+  });
 
   useEffect(() => {
     if (node.status !== "running" || node.mode !== "countdown") {
@@ -86,34 +196,39 @@ function TimerCard({ node }: { node: RunNode }) {
       alarmedRef.current = true;
       setAlarming(true);
       playBeep();
-      startTransition(async () => {
-        await completeTimer(node.id);
-        router.refresh();
-      });
+      completeAtZero();
       window.setTimeout(() => setAlarming(false), 1600);
     };
 
     const id = window.setInterval(tick, 200);
     tick();
     return () => window.clearInterval(id);
-  }, [node, router]);
+  }, [node]);
 
   const primary =
     node.status === "running" ? (
       <button
         type="button"
-        disabled={pending}
-        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2 disabled:opacity-50"
-        onClick={() => run(() => pauseTimer(node.id))}
+        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2"
+        onClick={() =>
+          runAction(
+            (tree) => patchTreeNode(tree, node.id, optimisticPause(node)),
+            () => pauseTimer(node.id),
+          )
+        }
       >
         Pause
       </button>
     ) : (
       <button
         type="button"
-        disabled={pending}
-        className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-50"
-        onClick={() => run(() => startTimer(node.id))}
+        className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg"
+        onClick={() =>
+          runAction(
+            (tree) => patchTreeNode(tree, node.id, optimisticStart(node)),
+            () => startTimer(node.id),
+          )
+        }
       >
         {node.status === "paused" ? "Resume" : "Start"}
       </button>
@@ -138,7 +253,10 @@ function TimerCard({ node }: { node: RunNode }) {
         </span>
       </div>
       <div className="mb-2">
-        <LiveTime node={node} />
+        <LiveTime
+          key={`${node.id}-${node.status}-${String(node.endsAt)}-${String(node.runningSince)}`}
+          node={node}
+        />
       </div>
       <label className="mb-2 block space-y-1 text-[11px] text-muted">
         Note
@@ -146,36 +264,73 @@ function TimerCard({ node }: { node: RunNode }) {
           className={`${field} min-h-10`}
           defaultValue={node.note}
           onBlur={(e) => {
-            if (e.target.value !== node.note) {
-              run(() => updateRunNodeNote(node.id, e.target.value));
-            }
+            if (e.target.value === node.note) return;
+            const note = e.target.value;
+            runAction(
+              (tree) => patchTreeNode(tree, node.id, { note }),
+              () => updateRunNodeNote(node.id, note),
+            );
           }}
         />
       </label>
 
       {editing ? (
-        <div className="mb-2 flex gap-2">
-          <input
-            className={`${field} font-mono`}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            placeholder={
-              node.mode === "countdown" ? "mm:ss remaining" : "mm:ss elapsed"
-            }
-            inputMode="numeric"
-          />
-          <button
-            type="button"
-            className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg"
-            onClick={() => {
-              const parsed = parseDurationInput(editValue);
-              if (parsed === null) return;
-              setEditing(false);
-              run(() => setTimerMs(node.id, parsed));
-            }}
-          >
-            Save
-          </button>
+        <div className="mb-2 space-y-2">
+          <DurationFields key={`edit-${node.id}`} ms={editMs} onSave={setEditMs} />
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg"
+              onClick={() => {
+                const ms = editMs;
+                setEditing(false);
+                runAction(
+                  (tree) =>
+                    patchTreeNode(
+                      tree,
+                      node.id,
+                      node.mode === "countdown"
+                        ? {
+                            remainingMs: ms,
+                            status:
+                              node.status === "running"
+                                ? "running"
+                                : node.status === "idle"
+                                  ? "paused"
+                                  : node.status,
+                            endsAt:
+                              node.status === "running"
+                                ? new Date(Date.now() + ms)
+                                : null,
+                            runningSince: null,
+                          }
+                        : {
+                            elapsedMs: ms,
+                            status:
+                              node.status === "running"
+                                ? "running"
+                                : node.status === "idle"
+                                  ? "paused"
+                                  : node.status,
+                            runningSince:
+                              node.status === "running" ? new Date() : null,
+                            endsAt: null,
+                          },
+                    ),
+                  () => setTimerMs(node.id, ms),
+                );
+              }}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              className={ghostBtn}
+              onClick={() => setEditing(false)}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -185,18 +340,21 @@ function TimerCard({ node }: { node: RunNode }) {
           <>
             <button
               type="button"
-              disabled={pending}
               className={ghostBtn}
-              onClick={() => run(() => resetTimer(node.id))}
+              onClick={() =>
+                runAction(
+                  (tree) => patchTreeNode(tree, node.id, optimisticReset(node)),
+                  () => resetTimer(node.id),
+                )
+              }
             >
               Reset
             </button>
             <button
               type="button"
-              disabled={pending}
               className={ghostBtn}
               onClick={() => {
-                setEditValue(formatDuration(displayMs(node)));
+                setEditMs(displayMs(node));
                 setEditing((v) => !v);
               }}
             >
@@ -204,9 +362,14 @@ function TimerCard({ node }: { node: RunNode }) {
             </button>
             <button
               type="button"
-              disabled={pending}
-              className="rounded-md border border-border px-2.5 py-1.5 text-xs text-danger hover:bg-danger-soft disabled:opacity-50"
-              onClick={() => run(() => completeTimer(node.id))}
+              className="rounded-md border border-border px-2.5 py-1.5 text-xs text-danger hover:bg-danger-soft"
+              onClick={() =>
+                runAction(
+                  (tree) =>
+                    patchTreeNode(tree, node.id, optimisticComplete(node)),
+                  () => completeTimer(node.id),
+                )
+              }
             >
               Done
             </button>
@@ -214,9 +377,17 @@ function TimerCard({ node }: { node: RunNode }) {
         ) : (
           <button
             type="button"
-            disabled={pending}
             className={ghostBtn}
-            onClick={() => run(() => uncompleteTimer(node.id))}
+            onClick={() =>
+              runAction(
+                (tree) =>
+                  patchTreeNode(tree, node.id, {
+                    status: "paused",
+                    completedAt: null,
+                  }),
+                () => uncompleteTimer(node.id),
+              )
+            }
           >
             Restore
           </button>
@@ -229,10 +400,12 @@ function TimerCard({ node }: { node: RunNode }) {
 function RunTree({
   nodes,
   showCompleted,
+  runAction,
   depth = 0,
 }: {
   nodes: TreeNode<RunNode>[];
   showCompleted: boolean;
+  runAction: (update: OptimisticUpdate, action: () => Promise<void>) => void;
   depth?: number;
 }) {
   return (
@@ -264,6 +437,7 @@ function RunTree({
               <RunTree
                 nodes={node.children}
                 showCompleted={showCompleted}
+                runAction={runAction}
                 depth={depth + 1}
               />
             </details>
@@ -277,7 +451,7 @@ function RunTree({
             key={node.id}
             style={{ marginLeft: Math.min(depth, 4) * 10 }}
           >
-            <TimerCard node={node} />
+            <TimerCard node={node} runAction={runAction} />
           </div>
         );
       })}
@@ -286,7 +460,27 @@ function RunTree({
 }
 
 export function RunView({ tree }: { tree: TreeNode<RunNode>[] }) {
+  const router = useRouter();
   const [showCompleted, setShowCompleted] = useState(false);
+  const [, startTransition] = useTransition();
+  const [optimisticTree, applyOptimistic] = useOptimistic(
+    tree,
+    (_current, update: OptimisticUpdate) => update(_current),
+  );
+
+  const runAction = (
+    update: OptimisticUpdate,
+    action: () => Promise<void>,
+  ) => {
+    startTransition(async () => {
+      applyOptimistic(update);
+      try {
+        await action();
+      } catch {
+        router.refresh();
+      }
+    });
+  };
 
   return (
     <div>
@@ -300,7 +494,11 @@ export function RunView({ tree }: { tree: TreeNode<RunNode>[] }) {
         Show completed
       </label>
       <div className="overflow-hidden rounded-md border border-border">
-        <RunTree nodes={tree} showCompleted={showCompleted} />
+        <RunTree
+          nodes={optimisticTree}
+          showCompleted={showCompleted}
+          runAction={runAction}
+        />
       </div>
     </div>
   );
