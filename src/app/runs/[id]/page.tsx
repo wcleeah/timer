@@ -1,4 +1,5 @@
 import { endRun } from "@/app/actions/runs";
+import { AppHeader, PageShell } from "@/components/AppChrome";
 import { RunView } from "@/components/RunView";
 import { db } from "@/db";
 import { runNodes, runs } from "@/db/schema";
@@ -31,38 +32,42 @@ export default async function RunPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-10 pt-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <Link href="/" className="text-sm text-teal-100/60">
-          ← Presets
-        </Link>
-        <Link href={`/history/${id}`} className="text-sm text-teal-100/60">
-          History view
-        </Link>
-      </div>
+    <PageShell>
+      <AppHeader
+        backHref="/"
+        backLabel="← Presets"
+        action={
+          <Link
+            href={`/history/${id}`}
+            className="text-xs text-muted hover:text-foreground"
+          >
+            History
+          </Link>
+        }
+      />
 
-      <header className="mb-5">
-        <p className="text-xs uppercase tracking-[0.18em] text-teal-200/45">
-          Active run
+      <div className="mb-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <h1 className="truncate text-lg font-semibold tracking-tight">
+            {run.presetName}
+          </h1>
+          <span className="shrink-0 font-mono text-xs text-muted">run</span>
+        </div>
+        <p className="mt-0.5 font-mono text-xs text-muted">
+          {run.startedAt.toLocaleString()}
         </p>
-        <h1 className="mt-1 text-2xl font-semibold text-teal-50">
-          {run.presetName}
-        </h1>
-        <p className="mt-1 text-xs text-teal-100/45">
-          Started {run.startedAt.toLocaleString()}
-        </p>
-      </header>
+      </div>
 
       <RunView tree={tree} />
 
-      <form action={finish} className="mt-8">
+      <form action={finish} className="mt-6">
         <button
           type="submit"
-          className="w-full rounded-2xl border border-white/10 py-3 text-sm text-teal-100/70"
+          className="w-full rounded-md border border-border py-2 text-sm text-muted hover:bg-surface hover:text-foreground"
         >
           End run
         </button>
       </form>
-    </main>
+    </PageShell>
   );
 }

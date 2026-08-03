@@ -1,3 +1,4 @@
+import { AppHeader, PageShell } from "@/components/AppChrome";
 import { BottomNav } from "@/components/BottomNav";
 import { db } from "@/db";
 import { runNodes, runs } from "@/db/schema";
@@ -22,38 +23,37 @@ export default async function HistoryPage() {
     .orderBy(desc(runs.startedAt));
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-28 pt-6">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-[0.2em] text-teal-200/50">
-          Past activity
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight text-teal-50">
-          History
-        </h1>
-      </header>
+    <PageShell withNav>
+      <AppHeader />
 
-      <section className="space-y-3">
+      <div className="mb-4">
+        <h1 className="text-lg font-semibold tracking-tight">History</h1>
+        <p className="mt-0.5 text-sm text-muted">Past runs, read-only.</p>
+      </div>
+
+      <section className="overflow-hidden rounded-md border border-border">
         {list.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-white/15 px-4 py-10 text-center text-sm text-teal-100/50">
-            No runs yet.
-          </p>
+          <p className="px-3 py-8 text-center text-sm text-muted">No runs yet.</p>
         ) : (
-          list.map((run) => (
+          list.map((run, i) => (
             <Link
               key={run.id}
               href={`/history/${run.id}`}
-              className="block rounded-2xl border border-white/10 bg-[#14201c]/90 px-4 py-4"
+              className={`block px-3 py-2.5 hover:bg-surface ${
+                i > 0 ? "border-t border-border" : ""
+              }`}
             >
-              <div className="text-base font-semibold text-teal-50">
-                {run.presetName}
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="truncate text-sm font-medium">
+                  {run.presetName}
+                </span>
+                <span className="shrink-0 font-mono text-xs text-muted">
+                  {Number(run.completedCount)}/{Number(run.timerCount)}
+                </span>
               </div>
-              <div className="mt-1 text-xs text-teal-100/45">
+              <div className="mt-0.5 font-mono text-xs text-muted">
                 {run.startedAt.toLocaleString()}
                 {run.endedAt ? " · ended" : " · open"}
-              </div>
-              <div className="mt-2 text-xs text-amber-200/70">
-                {Number(run.completedCount)} / {Number(run.timerCount)} timers
-                completed
               </div>
             </Link>
           ))
@@ -61,6 +61,6 @@ export default async function HistoryPage() {
       </section>
 
       <BottomNav active="history" />
-    </main>
+    </PageShell>
   );
 }

@@ -11,8 +11,8 @@ function ReadOnlyNode({
 }) {
   if (node.kind === "group") {
     return (
-      <div style={{ marginLeft: Math.min(depth, 4) * 12 }} className="space-y-2">
-        <div className="rounded-xl border border-teal-400/15 bg-teal-950/30 px-3 py-2 text-sm font-semibold text-teal-100">
+      <div style={{ marginLeft: Math.min(depth, 4) * 10 }}>
+        <div className="border-b border-border px-3 py-2 text-sm font-medium">
           {node.name}
         </div>
         {node.children.map((child) => (
@@ -29,22 +29,18 @@ function ReadOnlyNode({
 
   return (
     <div
-      style={{ marginLeft: Math.min(depth, 4) * 12 }}
-      className="rounded-2xl border border-white/10 bg-[#14201c] p-4"
+      style={{ marginLeft: Math.min(depth, 4) * 10 }}
+      className="border-b border-border px-3 py-2.5"
     >
-      <div className="mb-1 flex items-center justify-between gap-2">
-        <h3 className="font-semibold text-teal-50">{node.name}</h3>
-        <span className="text-[10px] uppercase tracking-wider text-teal-100/50">
+      <div className="mb-0.5 flex items-center justify-between gap-2">
+        <h3 className="truncate text-sm font-medium">{node.name}</h3>
+        <span className="font-mono text-[10px] uppercase text-muted">
           {node.status} · {node.mode}
         </span>
       </div>
-      <p className="font-[family-name:var(--font-timer)] text-3xl tabular-nums text-amber-100">
-        {time}
-      </p>
+      <p className="font-mono text-xl tabular-nums text-code">{time}</p>
       {node.note ? (
-        <p className="mt-2 whitespace-pre-wrap text-sm text-teal-100/65">
-          {node.note}
-        </p>
+        <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{node.note}</p>
       ) : null}
     </div>
   );
@@ -52,12 +48,10 @@ function ReadOnlyNode({
 
 export function HistoryRunTree({ tree }: { tree: TreeNode<RunNode>[] }) {
   if (tree.length === 0) {
-    return (
-      <p className="text-sm text-teal-100/50">No timers in this run.</p>
-    );
+    return <p className="text-sm text-muted">No timers in this run.</p>;
   }
   return (
-    <div className="space-y-3">
+    <div className="overflow-hidden rounded-md border border-border">
       {tree.map((node) => (
         <ReadOnlyNode key={node.id} node={node} depth={0} />
       ))}

@@ -12,6 +12,13 @@ import type { TreeNode } from "@/lib/tree";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+const field =
+  "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent";
+const ghostBtn =
+  "rounded-md border border-border px-2 py-1 text-xs text-muted hover:bg-surface-2 hover:text-foreground disabled:opacity-50";
+const dangerBtn =
+  "rounded-md border border-border px-2 py-1 text-xs text-danger hover:bg-danger-soft disabled:opacity-50";
+
 function DurationField({
   ms,
   onSave,
@@ -23,7 +30,7 @@ function DurationField({
 
   return (
     <input
-      className="w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-teal-50 outline-none focus:border-amber-300/50"
+      className={`${field} font-mono`}
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
@@ -64,95 +71,95 @@ function NodeEditor({
 
   if (node.kind === "group") {
     return (
-      <div className="space-y-2" style={{ marginLeft: pad }}>
-        <div className="rounded-2xl border border-teal-400/15 bg-teal-950/40 p-3">
-          <div className="flex items-start gap-2">
+      <div style={{ marginLeft: pad }}>
+        <div className="border-b border-border px-2 py-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              className="mt-1 text-teal-200/70"
+              className="text-muted"
               onClick={() => setOpen((v) => !v)}
               aria-label={open ? "Collapse" : "Expand"}
             >
-              {open ? "▾" : "▸"}
+              <span className={`inline-block transition ${open ? "rotate-90" : ""}`}>
+                ▸
+              </span>
             </button>
-            <div className="min-w-0 flex-1 space-y-2">
-              <input
-                className="w-full bg-transparent text-base font-semibold text-teal-50 outline-none"
-                defaultValue={node.name}
-                onBlur={(e) =>
+            <input
+              className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
+              defaultValue={node.name}
+              onBlur={(e) =>
+                run(() =>
+                  updatePresetNode({
+                    id: node.id,
+                    presetId,
+                    name: e.target.value,
+                  }),
+                )
+              }
+            />
+            <div className="flex flex-wrap gap-1">
+              <button
+                type="button"
+                disabled={pending}
+                className={ghostBtn}
+                onClick={() =>
                   run(() =>
-                    updatePresetNode({
-                      id: node.id,
+                    addPresetNode({
                       presetId,
-                      name: e.target.value,
+                      parentId: node.id,
+                      kind: "group",
                     }),
                   )
                 }
-              />
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={pending}
-                  className="rounded-lg bg-white/5 px-3 py-2 text-xs text-teal-100"
-                  onClick={() =>
-                    run(() =>
-                      addPresetNode({
-                        presetId,
-                        parentId: node.id,
-                        kind: "group",
-                      }),
-                    )
-                  }
-                >
-                  + Group
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  className="rounded-lg bg-amber-400/15 px-3 py-2 text-xs text-amber-200"
-                  onClick={() =>
-                    run(() =>
-                      addPresetNode({
-                        presetId,
-                        parentId: node.id,
-                        kind: "timer",
-                      }),
-                    )
-                  }
-                >
-                  + Timer
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  className="rounded-lg bg-white/5 px-3 py-2 text-xs text-teal-100/70"
-                  onClick={() =>
-                    run(() => movePresetNode(node.id, presetId, "up"))
-                  }
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  className="rounded-lg bg-white/5 px-3 py-2 text-xs text-teal-100/70"
-                  onClick={() =>
-                    run(() => movePresetNode(node.id, presetId, "down"))
-                  }
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  className="rounded-lg bg-rose-500/15 px-3 py-2 text-xs text-rose-200"
-                  onClick={() =>
-                    run(() => deletePresetNode(node.id, presetId))
-                  }
-                >
-                  Delete
-                </button>
-              </div>
+              >
+                + Group
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                className={ghostBtn}
+                onClick={() =>
+                  run(() =>
+                    addPresetNode({
+                      presetId,
+                      parentId: node.id,
+                      kind: "timer",
+                    }),
+                  )
+                }
+              >
+                + Timer
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                className={ghostBtn}
+                onClick={() =>
+                  run(() => movePresetNode(node.id, presetId, "up"))
+                }
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                className={ghostBtn}
+                onClick={() =>
+                  run(() => movePresetNode(node.id, presetId, "down"))
+                }
+              >
+                ↓
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                className={dangerBtn}
+                onClick={() =>
+                  run(() => deletePresetNode(node.id, presetId))
+                }
+              >
+                Del
+              </button>
             </div>
           </div>
         </div>
@@ -170,10 +177,13 @@ function NodeEditor({
   }
 
   return (
-    <div className="space-y-2" style={{ marginLeft: pad }}>
-      <div className="rounded-2xl border border-amber-300/20 bg-[#14201c] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+    <div style={{ marginLeft: pad }} className="border-b border-border px-2 py-2">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted">
+          timer
+        </span>
         <input
-          className="mb-2 w-full bg-transparent text-base font-semibold text-amber-50 outline-none"
+          className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none"
           defaultValue={node.name}
           onBlur={(e) =>
             run(() =>
@@ -185,80 +195,80 @@ function NodeEditor({
             )
           }
         />
-        <div className="mb-2 grid grid-cols-2 gap-2">
-          <label className="space-y-1 text-xs text-teal-100/60">
-            Mode
-            <select
-              className="w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-teal-50"
-              defaultValue={node.mode ?? "countdown"}
-              onChange={(e) =>
-                run(() =>
-                  updatePresetNode({
-                    id: node.id,
-                    presetId,
-                    mode: e.target.value as "countdown" | "stopwatch",
-                  }),
-                )
-              }
-            >
-              <option value="countdown">Countdown</option>
-              <option value="stopwatch">Stopwatch</option>
-            </select>
-          </label>
-          <label className="space-y-1 text-xs text-teal-100/60">
-            Duration
-            <DurationField
-              ms={node.durationMs}
-              onSave={(durationMs) =>
-                run(() =>
-                  updatePresetNode({ id: node.id, presetId, durationMs }),
-                )
-              }
-            />
-          </label>
-        </div>
-        <label className="mb-2 block space-y-1 text-xs text-teal-100/60">
-          Note
-          <textarea
-            className="min-h-16 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-teal-50 outline-none focus:border-amber-300/50"
-            defaultValue={node.note}
-            onBlur={(e) =>
+      </div>
+      <div className="mb-2 grid grid-cols-2 gap-2">
+        <label className="space-y-1 text-[11px] text-muted">
+          Mode
+          <select
+            className={field}
+            defaultValue={node.mode ?? "countdown"}
+            onChange={(e) =>
               run(() =>
                 updatePresetNode({
                   id: node.id,
                   presetId,
-                  note: e.target.value,
+                  mode: e.target.value as "countdown" | "stopwatch",
                 }),
+              )
+            }
+          >
+            <option value="countdown">Countdown</option>
+            <option value="stopwatch">Stopwatch</option>
+          </select>
+        </label>
+        <label className="space-y-1 text-[11px] text-muted">
+          Duration
+          <DurationField
+            ms={node.durationMs}
+            onSave={(durationMs) =>
+              run(() =>
+                updatePresetNode({ id: node.id, presetId, durationMs }),
               )
             }
           />
         </label>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={pending}
-            className="rounded-lg bg-white/5 px-3 py-2 text-xs text-teal-100/70"
-            onClick={() => run(() => movePresetNode(node.id, presetId, "up"))}
-          >
-            ↑
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            className="rounded-lg bg-white/5 px-3 py-2 text-xs text-teal-100/70"
-            onClick={() => run(() => movePresetNode(node.id, presetId, "down"))}
-          >
-            ↓
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            className="rounded-lg bg-rose-500/15 px-3 py-2 text-xs text-rose-200"
-            onClick={() => run(() => deletePresetNode(node.id, presetId))}
-          >
-            Delete
-          </button>
-        </div>
+      </div>
+      <label className="mb-2 block space-y-1 text-[11px] text-muted">
+        Note
+        <textarea
+          className={`${field} min-h-12`}
+          defaultValue={node.note}
+          onBlur={(e) =>
+            run(() =>
+              updatePresetNode({
+                id: node.id,
+                presetId,
+                note: e.target.value,
+              }),
+            )
+          }
+        />
+      </label>
+      <div className="flex flex-wrap gap-1">
+        <button
+          type="button"
+          disabled={pending}
+          className={ghostBtn}
+          onClick={() => run(() => movePresetNode(node.id, presetId, "up"))}
+        >
+          ↑
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          className={ghostBtn}
+          onClick={() => run(() => movePresetNode(node.id, presetId, "down"))}
+        >
+          ↓
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          className={dangerBtn}
+          onClick={() => run(() => deletePresetNode(node.id, presetId))}
+        >
+          Del
+        </button>
       </div>
     </div>
   );
@@ -282,12 +292,12 @@ export function PresetTreeEditor({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+    <div>
+      <div className="mb-2 flex flex-wrap gap-1">
         <button
           type="button"
           disabled={pending}
-          className="rounded-xl bg-white/5 px-4 py-3 text-sm text-teal-100"
+          className={ghostBtn}
           onClick={() =>
             run(() =>
               addPresetNode({ presetId, parentId: null, kind: "group" }),
@@ -299,7 +309,7 @@ export function PresetTreeEditor({
         <button
           type="button"
           disabled={pending}
-          className="rounded-xl bg-amber-400/20 px-4 py-3 text-sm font-medium text-amber-100"
+          className="rounded-md border border-border bg-accent-soft px-2 py-1 text-xs text-accent hover:bg-surface-2 disabled:opacity-50"
           onClick={() =>
             run(() =>
               addPresetNode({ presetId, parentId: null, kind: "timer" }),
@@ -309,20 +319,22 @@ export function PresetTreeEditor({
           + Timer
         </button>
       </div>
-      {tree.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-teal-100/50">
-          Add groups and timers to build this preset.
-        </p>
-      ) : (
-        tree.map((node) => (
-          <NodeEditor
-            key={node.id}
-            node={node}
-            presetId={presetId}
-            depth={0}
-          />
-        ))
-      )}
+      <div className="overflow-hidden rounded-md border border-border">
+        {tree.length === 0 ? (
+          <p className="px-3 py-8 text-center text-sm text-muted">
+            Add groups and timers to build this preset.
+          </p>
+        ) : (
+          tree.map((node) => (
+            <NodeEditor
+              key={node.id}
+              node={node}
+              presetId={presetId}
+              depth={0}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }

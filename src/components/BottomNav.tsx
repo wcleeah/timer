@@ -1,27 +1,24 @@
 import Link from "next/link";
 
 export function BottomNav({ active }: { active: "presets" | "history" }) {
+  const item = (href: string, id: "presets" | "history", label: string) => (
+    <Link
+      href={href}
+      className={`flex flex-1 items-center justify-center border-t-2 py-3 text-xs font-medium ${
+        active === id
+          ? "border-accent text-foreground"
+          : "border-transparent text-muted hover:text-foreground"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-white/10 bg-[#0c1412]/90 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto flex max-w-lg">
-        <Link
-          href="/"
-          className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium tracking-wide ${
-            active === "presets" ? "text-amber-300" : "text-teal-100/50"
-          }`}
-        >
-          <span className="text-base">◎</span>
-          Presets
-        </Link>
-        <Link
-          href="/history"
-          className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium tracking-wide ${
-            active === "history" ? "text-amber-300" : "text-teal-100/50"
-          }`}
-        >
-          <span className="text-base">◷</span>
-          History
-        </Link>
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex max-w-2xl">
+        {item("/", "presets", "Presets")}
+        {item("/history", "history", "History")}
       </div>
     </nav>
   );

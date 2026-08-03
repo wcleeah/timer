@@ -20,6 +20,11 @@ import type { TreeNode } from "@/lib/tree";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
+const field =
+  "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent";
+const ghostBtn =
+  "rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:bg-surface-2 hover:text-foreground disabled:opacity-50";
+
 function playBeep() {
   try {
     const ctx = new AudioContext();
@@ -49,7 +54,7 @@ function LiveTime({ node }: { node: RunNode }) {
   }, [node.status, node.endsAt, node.runningSince, node.id]);
 
   return (
-    <span className="font-[family-name:var(--font-timer)] text-4xl tracking-tight tabular-nums text-amber-50">
+    <span className="font-mono text-2xl tracking-tight tabular-nums text-code">
       {formatDuration(displayMs(node, now))}
     </span>
   );
@@ -98,7 +103,7 @@ function TimerCard({ node }: { node: RunNode }) {
       <button
         type="button"
         disabled={pending}
-        className="flex-1 rounded-xl bg-teal-300/15 px-4 py-3 text-sm font-medium text-teal-100"
+        className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-surface-2 disabled:opacity-50"
         onClick={() => run(() => pauseTimer(node.id))}
       >
         Pause
@@ -107,7 +112,7 @@ function TimerCard({ node }: { node: RunNode }) {
       <button
         type="button"
         disabled={pending}
-        className="flex-1 rounded-xl bg-amber-400 px-4 py-3 text-sm font-semibold text-[#13201b]"
+        className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg disabled:opacity-50"
         onClick={() => run(() => startTimer(node.id))}
       >
         {node.status === "paused" ? "Resume" : "Start"}
@@ -116,31 +121,29 @@ function TimerCard({ node }: { node: RunNode }) {
 
   return (
     <div
-      className={`rounded-2xl border p-4 transition ${
+      className={`border-b border-border px-3 py-2.5 transition ${
         alarming
-          ? "timer-shake border-amber-300 bg-amber-400/20"
+          ? "timer-shake bg-accent-soft"
           : node.status === "running"
-            ? "border-amber-300/40 bg-[#1a2a24]"
+            ? "bg-running-soft"
             : node.status === "completed"
-              ? "border-white/10 bg-white/5 opacity-70"
-              : "border-white/10 bg-[#14201c]"
+              ? "opacity-60"
+              : "bg-background"
       }`}
     >
       <div className="mb-1 flex items-center justify-between gap-2">
-        <h3 className="truncate text-base font-semibold text-teal-50">
-          {node.name}
-        </h3>
-        <span className="rounded-md bg-black/30 px-2 py-1 text-[10px] uppercase tracking-wider text-teal-100/60">
+        <h3 className="truncate text-sm font-medium">{node.name}</h3>
+        <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted">
           {node.mode}
         </span>
       </div>
-      <div className="mb-3">
+      <div className="mb-2">
         <LiveTime node={node} />
       </div>
-      <label className="mb-3 block space-y-1 text-xs text-teal-100/55">
+      <label className="mb-2 block space-y-1 text-[11px] text-muted">
         Note
         <textarea
-          className="min-h-14 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-teal-50 outline-none focus:border-amber-300/40"
+          className={`${field} min-h-10`}
           defaultValue={node.note}
           onBlur={(e) => {
             if (e.target.value !== node.note) {
@@ -151,17 +154,19 @@ function TimerCard({ node }: { node: RunNode }) {
       </label>
 
       {editing ? (
-        <div className="mb-3 flex gap-2">
+        <div className="mb-2 flex gap-2">
           <input
-            className="flex-1 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-teal-50"
+            className={`${field} font-mono`}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            placeholder={node.mode === "countdown" ? "mm:ss remaining" : "mm:ss elapsed"}
+            placeholder={
+              node.mode === "countdown" ? "mm:ss remaining" : "mm:ss elapsed"
+            }
             inputMode="numeric"
           />
           <button
             type="button"
-            className="rounded-lg bg-amber-400/20 px-3 py-2 text-sm text-amber-100"
+            className="rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-fg"
             onClick={() => {
               const parsed = parseDurationInput(editValue);
               if (parsed === null) return;
@@ -174,14 +179,14 @@ function TimerCard({ node }: { node: RunNode }) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {node.status !== "completed" ? primary : null}
         {node.status !== "completed" ? (
           <>
             <button
               type="button"
               disabled={pending}
-              className="rounded-xl bg-white/5 px-3 py-3 text-sm text-teal-100/80"
+              className={ghostBtn}
               onClick={() => run(() => resetTimer(node.id))}
             >
               Reset
@@ -189,28 +194,28 @@ function TimerCard({ node }: { node: RunNode }) {
             <button
               type="button"
               disabled={pending}
-              className="rounded-xl bg-white/5 px-3 py-3 text-sm text-teal-100/80"
+              className={ghostBtn}
               onClick={() => {
                 setEditValue(formatDuration(displayMs(node)));
                 setEditing((v) => !v);
               }}
             >
-              Edit time
+              Edit
             </button>
             <button
               type="button"
               disabled={pending}
-              className="rounded-xl bg-rose-500/15 px-3 py-3 text-sm text-rose-100"
+              className="rounded-md border border-border px-2.5 py-1.5 text-xs text-danger hover:bg-danger-soft disabled:opacity-50"
               onClick={() => run(() => completeTimer(node.id))}
             >
-              Complete
+              Done
             </button>
           </>
         ) : (
           <button
             type="button"
             disabled={pending}
-            className="rounded-xl bg-white/5 px-3 py-3 text-sm text-teal-100/80"
+            className={ghostBtn}
             onClick={() => run(() => uncompleteTimer(node.id))}
           >
             Restore
@@ -231,46 +236,36 @@ function RunTree({
   depth?: number;
 }) {
   return (
-    <div className="space-y-3">
+    <div>
       {nodes.map((node) => {
         if (node.kind === "group") {
-          const visibleChildren = node.children.filter((child) => {
-            if (child.kind === "group") return true;
-            return showCompleted || child.status !== "completed";
-          });
-          if (!showCompleted && visibleChildren.length === 0) {
-            const hasAnyTimer = (n: TreeNode<RunNode>): boolean =>
-              n.kind === "timer" || n.children.some(hasAnyTimer);
-            if (!node.children.some(hasAnyTimer)) {
-              // empty group still shown
-            } else {
-              const anyVisible = (n: TreeNode<RunNode>): boolean => {
-                if (n.kind === "timer") {
-                  return showCompleted || n.status !== "completed";
-                }
-                return n.children.some(anyVisible);
-              };
-              if (!anyVisible(node)) return null;
+          const anyVisible = (n: TreeNode<RunNode>): boolean => {
+            if (n.kind === "timer") {
+              return showCompleted || n.status !== "completed";
             }
+            return n.children.some(anyVisible);
+          };
+          if (!showCompleted && node.children.length > 0 && !anyVisible(node)) {
+            return null;
           }
           return (
             <details
               key={node.id}
               open
-              className="rounded-2xl border border-teal-400/15 bg-teal-950/30 p-3"
-              style={{ marginLeft: Math.min(depth, 4) * 8 }}
+              className="border-b border-border"
+              style={{ marginLeft: Math.min(depth, 4) * 10 }}
             >
-              <summary className="cursor-pointer list-none text-sm font-semibold text-teal-100">
-                <span className="mr-2 text-teal-100/50">▸</span>
+              <summary className="cursor-pointer list-none px-3 py-2 text-sm font-medium hover:bg-surface">
+                <span className="chevron mr-1.5 inline-block text-muted transition">
+                  ▸
+                </span>
                 {node.name}
               </summary>
-              <div className="mt-3">
-                <RunTree
-                  nodes={node.children}
-                  showCompleted={showCompleted}
-                  depth={depth + 1}
-                />
-              </div>
+              <RunTree
+                nodes={node.children}
+                showCompleted={showCompleted}
+                depth={depth + 1}
+              />
             </details>
           );
         }
@@ -280,7 +275,7 @@ function RunTree({
         return (
           <div
             key={node.id}
-            style={{ marginLeft: Math.min(depth, 4) * 8 }}
+            style={{ marginLeft: Math.min(depth, 4) * 10 }}
           >
             <TimerCard node={node} />
           </div>
@@ -294,17 +289,19 @@ export function RunView({ tree }: { tree: TreeNode<RunNode>[] }) {
   const [showCompleted, setShowCompleted] = useState(false);
 
   return (
-    <div className="space-y-4">
-      <label className="flex items-center gap-2 text-sm text-teal-100/70">
+    <div>
+      <label className="mb-2 flex items-center gap-2 text-xs text-muted">
         <input
           type="checkbox"
           checked={showCompleted}
           onChange={(e) => setShowCompleted(e.target.checked)}
-          className="size-4 accent-amber-400"
+          className="size-3.5 accent-accent"
         />
         Show completed
       </label>
-      <RunTree nodes={tree} showCompleted={showCompleted} />
+      <div className="overflow-hidden rounded-md border border-border">
+        <RunTree nodes={tree} showCompleted={showCompleted} />
+      </div>
     </div>
   );
 }

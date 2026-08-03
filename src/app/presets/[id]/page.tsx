@@ -3,12 +3,12 @@ import {
   renamePreset,
   startRunFromPreset,
 } from "@/app/actions/presets";
+import { AppHeader, PageShell } from "@/components/AppChrome";
 import { PresetTreeEditor } from "@/components/PresetTreeEditor";
 import { db } from "@/db";
 import { presetNodes, presets } from "@/db/schema";
 import { buildTree } from "@/lib/tree";
 import { asc, eq } from "drizzle-orm";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -45,45 +45,46 @@ export default async function PresetPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-10 pt-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <Link href="/" className="text-sm text-teal-100/60">
-          ← Presets
-        </Link>
-        <form action={remove}>
-          <button
-            type="submit"
-            className="text-sm text-rose-200/80"
-          >
-            Delete
-          </button>
-        </form>
-      </div>
+    <PageShell>
+      <AppHeader
+        backHref="/"
+        backLabel="← Presets"
+        action={
+          <form action={remove}>
+            <button
+              type="submit"
+              className="text-xs text-danger hover:underline"
+            >
+              Delete
+            </button>
+          </form>
+        }
+      />
 
-      <form action={saveName} className="mb-4">
+      <form action={saveName} className="mb-3 flex items-center gap-2">
         <input
           name="name"
           defaultValue={preset.name}
-          className="w-full bg-transparent text-2xl font-semibold tracking-tight text-teal-50 outline-none"
+          className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight outline-none"
         />
         <button
           type="submit"
-          className="mt-2 text-xs text-amber-200/80"
+          className="shrink-0 text-xs text-accent hover:underline"
         >
-          Save name
+          Save
         </button>
       </form>
 
-      <form action={startRun} className="mb-6">
+      <form action={startRun} className="mb-4">
         <button
           type="submit"
-          className="w-full rounded-2xl bg-amber-400 py-4 text-base font-semibold text-[#13201b]"
+          className="w-full rounded-md bg-accent py-2.5 text-sm font-medium text-accent-fg"
         >
           Start run
         </button>
       </form>
 
       <PresetTreeEditor presetId={preset.id} tree={tree} />
-    </main>
+    </PageShell>
   );
 }
