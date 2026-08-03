@@ -16,7 +16,6 @@ import { patchTreeNode, type TreeNode } from "@/lib/tree";
 import { useRouter } from "next/navigation";
 import {
   useEffect,
-  useEffectEvent,
   useOptimistic,
   useRef,
   useState,
@@ -54,7 +53,13 @@ function asDate(value: Date | string | null | undefined): Date | null {
   return value instanceof Date ? value : new Date(value);
 }
 
-function LiveTime({ node }: { node: RunNode }) {
+function LiveTime({
+  node,
+  expired,
+}: {
+  node: RunNode;
+  expired?: boolean;
+}) {
   const [now, setNow] = useState(() => Date.now());
   const running =
     node.status === "running"
@@ -68,7 +73,11 @@ function LiveTime({ node }: { node: RunNode }) {
   }, [node.status, running]);
 
   return (
-    <span className="font-mono text-2xl tracking-tight tabular-nums text-code">
+    <span
+      className={`timer-display font-mono text-2xl tracking-tight tabular-nums ${
+        expired ? "text-danger" : "text-code"
+      }`}
+    >
       {formatDuration(displayMs(node, now))}
     </span>
   );
@@ -98,18 +107,11 @@ function optimisticPause(node: RunNode): Partial<RunNode> {
     const remaining = endsAt
       ? Math.max(0, endsAt.getTime() - now)
       : (node.remainingMs ?? 0);
-    if (remaining <= 0) {
-      return {
-        status: "completed",
-        remainingMs: 0,
-        endsAt: null,
-        completedAt: new Date(now),
-      };
-    }
     return {
       status: "paused",
       remainingMs: remaining,
       endsAt: null,
+      completedAt: null,
     };
   }
 
@@ -169,41 +171,29 @@ function TimerCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [editMs, setEditMs] = useState(0);
-  const [alarming, setAlarming] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const alarmedRef = useRef(false);
-  const completeAtZero = useEffectEvent(() => {
-    runAction(
-      (tree) =>
-        patchTreeNode(tree, node.id, {
-          status: "completed",
-          remainingMs: 0,
-          endsAt: null,
-          runningSince: null,
-          completedAt: new Date(),
-        }),
-      () => completeTimer(node.id),
-    );
-  });
+  const endsKey = String(node.endsAt);
+  const expired =
+    node.status === "running" &&
+    node.mode === "countdown" &&
+    hasHitZero(node, now);
 
   useEffect(() => {
-    if (node.status !== "running" || node.mode !== "countdown") {
+    if (node.status !== "running" || node.mode !== "countdown") return;
+    const id = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, [node.status, node.mode, endsKey]);
+
+  useEffect(() => {
+    if (!expired) {
       alarmedRef.current = false;
       return;
     }
-
-    const tick = () => {
-      if (!hasHitZero(node) || alarmedRef.current) return;
-      alarmedRef.current = true;
-      setAlarming(true);
-      playBeep();
-      completeAtZero();
-      window.setTimeout(() => setAlarming(false), 1600);
-    };
-
-    const id = window.setInterval(tick, 200);
-    tick();
-    return () => window.clearInterval(id);
-  }, [node]);
+    if (alarmedRef.current) return;
+    alarmedRef.current = true;
+    playBeep();
+  }, [expired]);
 
   const primary =
     node.status === "running" ? (
@@ -237,8 +227,8 @@ function TimerCard({
   return (
     <div
       className={`border-b border-border px-3 py-2.5 transition ${
-        alarming
-          ? "timer-shake bg-accent-soft"
+        expired
+          ? "timer-expired"
           : node.status === "running"
             ? "bg-running-soft"
             : node.status === "completed"
@@ -256,6 +246,7 @@ function TimerCard({
         <LiveTime
           key={`${node.id}-${node.status}-${String(node.endsAt)}-${String(node.runningSince)}`}
           node={node}
+          expired={expired}
         />
       </div>
       <label className="mb-2 block space-y-1 text-[11px] text-muted">

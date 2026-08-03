@@ -57,10 +57,10 @@ export async function pauseTimer(nodeId: string) {
     await db
       .update(runNodes)
       .set({
-        status: remaining <= 0 ? "completed" : "paused",
+        status: "paused",
         remainingMs: remaining,
         endsAt: null,
-        completedAt: remaining <= 0 ? new Date() : null,
+        completedAt: null,
       })
       .where(eq(runNodes.id, nodeId));
   } else {

@@ -164,7 +164,11 @@ export async function movePresetNode(
   revalidatePath(`/presets/${presetId}`);
 }
 
-export async function startRunFromPreset(presetId: string) {
+export async function startRunFromPreset(
+  presetId: string,
+  options?: { startAll?: boolean },
+) {
+  const startAll = options?.startAll === true;
   const [preset] = await db
     .select()
     .from(presets)
@@ -190,22 +194,36 @@ export async function startRunFromPreset(presetId: string) {
     idMap.set(node.id, crypto.randomUUID());
   }
 
+  const now = new Date();
   if (nodes.length > 0) {
     await db.insert(runNodes).values(
-      nodes.map((node) => ({
-        id: idMap.get(node.id)!,
-        runId: run.id,
-        parentId: node.parentId ? idMap.get(node.parentId)! : null,
-        kind: node.kind,
-        name: node.name,
-        sortOrder: node.sortOrder,
-        mode: node.mode,
-        durationMs: node.durationMs,
-        note: node.note,
-        status: "idle",
-        remainingMs: node.kind === "timer" ? (node.durationMs ?? 0) : null,
-        elapsedMs: 0,
-      })),
+      nodes.map((node) => {
+        const isTimer = node.kind === "timer";
+        const remainingMs = isTimer ? (node.durationMs ?? 0) : null;
+        const shouldStart =
+          startAll && isTimer && (node.mode === "stopwatch" || (remainingMs ?? 0) > 0);
+
+        return {
+          id: idMap.get(node.id)!,
+          runId: run.id,
+          parentId: node.parentId ? idMap.get(node.parentId)! : null,
+          kind: node.kind,
+          name: node.name,
+          sortOrder: node.sortOrder,
+          mode: node.mode,
+          durationMs: node.durationMs,
+          note: node.note,
+          status: shouldStart ? "running" : "idle",
+          remainingMs,
+          elapsedMs: 0,
+          endsAt:
+            shouldStart && node.mode === "countdown" && remainingMs != null
+              ? new Date(now.getTime() + remainingMs)
+              : null,
+          runningSince:
+            shouldStart && node.mode === "stopwatch" ? now : null,
+        };
+      }),
     );
   }
 

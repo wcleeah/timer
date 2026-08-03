@@ -7,13 +7,13 @@
   --border: #e4e4e7;
   --surface: #fafafa;
   --surface-2: #f4f4f5;
-  --accent: #2563eb;
-  --accent-fg: #ffffff;
-  --accent-soft: #eff6ff;
+  --accent: #ca8a04;
+  --accent-fg: #18181b;
+  --accent-soft: #fef9c3;
   --danger: #dc2626;
   --danger-soft: #fef2f2;
-  --running: #2563eb;
-  --running-soft: #eff6ff;
+  --running: #ca8a04;
+  --running-soft: #fefce8;
   --code: #18181b;
 }
 
@@ -24,13 +24,13 @@
   --border: #27272a;
   --surface: #18181b;
   --surface-2: #27272a;
-  --accent: #3b82f6;
-  --accent-fg: #ffffff;
-  --accent-soft: #172554;
+  --accent: #facc15;
+  --accent-fg: #18181b;
+  --accent-soft: #422006;
   --danger: #f87171;
   --danger-soft: #450a0a;
-  --running: #60a5fa;
-  --running-soft: #172554;
+  --running: #facc15;
+  --running-soft: #422006;
   --code: #e4e4e7;
 }
 
@@ -78,8 +78,29 @@ body {
   }
 }
 
+@keyframes timer-pulse-red {
+  0%,
+  100% {
+    background-color: var(--danger-soft);
+  }
+  50% {
+    background-color: color-mix(in oklab, var(--danger-soft) 70%, var(--danger));
+  }
+}
+
 .timer-shake {
   animation: timer-shake 0.4s ease-in-out 0s 3;
+}
+
+.timer-expired {
+  animation:
+    timer-shake 0.4s ease-in-out 0s 3,
+    timer-pulse-red 1.2s ease-in-out 1.2s infinite;
+  background: var(--danger-soft);
+}
+
+.timer-expired .timer-display {
+  color: var(--danger);
 }
 
 details > summary::-webkit-details-marker {
