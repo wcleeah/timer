@@ -47,14 +47,18 @@ export async function deletePreset(presetId: string) {
 }
 
 export async function addPresetNode(input: {
+  id?: string;
   presetId: string;
   parentId: string | null;
   kind: "group" | "timer";
   name?: string;
+  sortOrder?: number;
 }) {
-  const sortOrder = await nextSortOrder(input.presetId, input.parentId);
+  const sortOrder =
+    input.sortOrder ?? (await nextSortOrder(input.presetId, input.parentId));
   const isTimer = input.kind === "timer";
   await db.insert(presetNodes).values({
+    ...(input.id ? { id: input.id } : {}),
     presetId: input.presetId,
     parentId: input.parentId,
     kind: input.kind,

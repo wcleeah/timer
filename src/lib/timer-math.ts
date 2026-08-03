@@ -3,19 +3,29 @@ import type { RunNode } from "@/db/schema";
 export type TimerMode = "countdown" | "stopwatch";
 export type TimerStatus = "idle" | "running" | "paused" | "completed";
 
+function toTime(value: Date | string | null | undefined): number | null {
+  if (!value) return null;
+  const ms = value instanceof Date ? value.getTime() : new Date(value).getTime();
+  return Number.isNaN(ms) ? null : ms;
+}
+
 export function displayMs(node: RunNode, now = Date.now()): number {
   if (node.kind !== "timer") return 0;
 
   if (node.mode === "countdown") {
-    if (node.status === "running" && node.endsAt) {
-      return Math.max(0, node.endsAt.getTime() - now);
+    if (node.status === "running") {
+      const endsAt = toTime(node.endsAt);
+      if (endsAt !== null) return Math.max(0, endsAt - now);
     }
     return Math.max(0, node.remainingMs ?? node.durationMs ?? 0);
   }
 
   // stopwatch
-  if (node.status === "running" && node.runningSince) {
-    return (node.elapsedMs ?? 0) + (now - node.runningSince.getTime());
+  if (node.status === "running") {
+    const runningSince = toTime(node.runningSince);
+    if (runningSince !== null) {
+      return (node.elapsedMs ?? 0) + (now - runningSince);
+    }
   }
   return Math.max(0, node.elapsedMs ?? 0);
 }
@@ -27,6 +37,28 @@ export function hasHitZero(node: RunNode, now = Date.now()): boolean {
     node.status === "running" &&
     displayMs(node, now) <= 0
   );
+}
+
+export type DurationParts = {
+  hours: number;
+  minutes: number;
+  seconds: number;
+};
+
+export function splitDuration(ms: number): DurationParts {
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  return {
+    hours: Math.floor(totalSeconds / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
+export function combineDuration(parts: DurationParts): number {
+  const hours = Math.max(0, Math.trunc(parts.hours) || 0);
+  const minutes = Math.max(0, Math.trunc(parts.minutes) || 0);
+  const seconds = Math.max(0, Math.trunc(parts.seconds) || 0);
+  return (hours * 3600 + minutes * 60 + seconds) * 1000;
 }
 
 export function formatDuration(ms: number): string {
