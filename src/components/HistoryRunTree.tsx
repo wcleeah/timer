@@ -1,5 +1,9 @@
 import type { RunNode } from "@/db/schema";
-import { formatDuration } from "@/lib/timer-math";
+import {
+  formatDuration,
+  formatModeLabel,
+  isCountdownLike,
+} from "@/lib/timer-math";
 import type { TreeNode } from "@/lib/tree";
 
 function ReadOnlyNode({
@@ -22,10 +26,13 @@ function ReadOnlyNode({
     );
   }
 
-  const time =
-    node.mode === "countdown"
-      ? formatDuration(node.remainingMs ?? node.durationMs ?? 0)
-      : formatDuration(node.elapsedMs ?? 0);
+  const time = isCountdownLike(node.mode)
+    ? formatDuration(node.remainingMs ?? node.durationMs ?? 0)
+    : formatDuration(node.elapsedMs ?? 0);
+
+  const modeLabel = formatModeLabel(node.mode);
+  const cycles =
+    node.mode === "recurring" ? ` · ×${node.cycleCount ?? 0}` : "";
 
   return (
     <div
@@ -34,8 +41,12 @@ function ReadOnlyNode({
     >
       <div className="mb-0.5 flex items-center justify-between gap-2">
         <h3 className="truncate text-sm font-medium">{node.name}</h3>
-        <span className="font-mono text-[10px] uppercase text-muted">
-          {node.status} · {node.mode}
+        <span
+          className="font-mono text-[10px] uppercase text-muted"
+          title={node.mode === "recurring" ? "Recurring" : undefined}
+        >
+          {node.status} · {modeLabel}
+          {cycles}
         </span>
       </div>
       <p className="font-mono text-xl tabular-nums text-code">{time}</p>

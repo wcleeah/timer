@@ -26,7 +26,7 @@ export const presetNodes = pgTable("preset_nodes", {
   kind: text("kind").notNull(), // group | timer
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
-  mode: text("mode"), // countdown | stopwatch
+  mode: text("mode"), // countdown | stopwatch | recurring
   durationMs: integer("duration_ms"),
   note: text("note").notNull().default(""),
 });
@@ -58,6 +58,7 @@ export const runNodes = pgTable("run_nodes", {
   status: text("status").notNull().default("idle"), // idle | running | paused | completed
   remainingMs: integer("remaining_ms"),
   elapsedMs: integer("elapsed_ms").notNull().default(0),
+  cycleCount: integer("cycle_count").notNull().default(0),
   endsAt: timestamp("ends_at", { withTimezone: true }),
   runningSince: timestamp("running_since", { withTimezone: true }),
   completedAt: timestamp("completed_at", { withTimezone: true }),

@@ -1,0 +1,1 @@
+ALTER TABLE "run_nodes" ADD COLUMN "cycle_count" integer DEFAULT 0 NOT NULL;

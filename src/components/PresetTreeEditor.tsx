@@ -215,7 +215,10 @@ function NodeEditor({
             className={field}
             value={node.mode ?? "countdown"}
             onChange={(e) => {
-              const mode = e.target.value as "countdown" | "stopwatch";
+              const mode = e.target.value as
+                | "countdown"
+                | "stopwatch"
+                | "recurring";
               runAction(
                 (current) => patchTreeNode(current, node.id, { mode }),
                 () => updatePresetNode({ id: node.id, presetId, mode }),
@@ -224,6 +227,7 @@ function NodeEditor({
           >
             <option value="countdown">Countdown</option>
             <option value="stopwatch">Stopwatch</option>
+            <option value="recurring">∞ Recurring</option>
           </select>
         </label>
         <div className="space-y-1 text-[11px] text-muted">
