@@ -1,10 +1,10 @@
 import { createPreset } from "@/app/actions/presets";
 import { AppHeader, PageShell } from "@/components/AppChrome";
 import { BottomNav } from "@/components/BottomNav";
+import { PresetListItem } from "@/components/PresetListItem";
 import { db } from "@/db";
 import { presets } from "@/db/schema";
 import { desc } from "drizzle-orm";
-import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -43,18 +43,12 @@ export default async function HomePage() {
           </p>
         ) : (
           list.map((preset, i) => (
-            <Link
+            <PresetListItem
               key={preset.id}
-              href={`/presets/${preset.id}`}
-              className={`flex items-baseline justify-between gap-3 px-3 py-2.5 hover:bg-surface ${
-                i > 0 ? "border-t border-border" : ""
-              }`}
-            >
-              <span className="truncate text-sm font-medium">{preset.name}</span>
-              <span className="shrink-0 font-mono text-xs text-muted">
-                {preset.updatedAt.toLocaleDateString()}
-              </span>
-            </Link>
+              id={preset.id}
+              name={preset.name}
+              bordered={i > 0}
+            />
           ))
         )}
       </section>

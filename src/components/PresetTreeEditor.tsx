@@ -18,7 +18,7 @@ import {
   type TreeNode,
 } from "@/lib/tree";
 import { useRouter } from "next/navigation";
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 
 const field =
   "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm outline-none focus:border-accent";
@@ -301,16 +301,22 @@ function NodeEditor({
 export function PresetTreeEditor({
   presetId,
   tree,
+  onBusyChange,
 }: {
   presetId: string;
   tree: TreeNode<PresetNode>[];
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [pending, startTransition] = useTransition();
   const [optimisticTree, applyOptimistic] = useOptimistic(
     tree,
     (_current, update: OptimisticUpdate) => update(_current),
   );
+
+  useEffect(() => {
+    onBusyChange?.(pending);
+  }, [pending, onBusyChange]);
 
   const runAction = (
     update: OptimisticUpdate,
@@ -348,17 +354,17 @@ export function PresetTreeEditor({
 
   return (
     <div>
-      <div className="mb-2 flex flex-wrap gap-1">
+      <div className="mb-2 grid grid-cols-2 gap-1">
         <button
           type="button"
-          className={ghostBtn}
+          className={`${ghostBtn} w-full py-2 text-center`}
           onClick={() => addRoot("group")}
         >
           + Group
         </button>
         <button
           type="button"
-          className="rounded-md border border-border bg-accent-soft px-2 py-1 text-xs text-accent hover:bg-surface-2"
+          className="w-full rounded-md border border-border bg-accent-soft px-2 py-2 text-center text-xs text-accent hover:bg-surface-2"
           onClick={() => addRoot("timer")}
         >
           + Timer
