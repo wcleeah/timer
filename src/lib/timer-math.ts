@@ -1,7 +1,16 @@
 import type { RunNode } from "@/db/schema";
 
-export type TimerMode = "countdown" | "stopwatch";
+export type TimerMode = "countdown" | "stopwatch" | "recurring";
 export type TimerStatus = "idle" | "running" | "paused" | "completed";
+
+export function isCountdownLike(mode: string | null | undefined): boolean {
+  return mode === "countdown" || mode === "recurring";
+}
+
+export function formatModeLabel(mode: string | null | undefined): string {
+  if (mode === "recurring") return "∞";
+  return mode ?? "";
+}
 
 function toTime(value: Date | string | null | undefined): number | null {
   if (!value) return null;
@@ -12,7 +21,7 @@ function toTime(value: Date | string | null | undefined): number | null {
 export function displayMs(node: RunNode, now = Date.now()): number {
   if (node.kind !== "timer") return 0;
 
-  if (node.mode === "countdown") {
+  if (isCountdownLike(node.mode)) {
     if (node.status === "running") {
       const endsAt = toTime(node.endsAt);
       if (endsAt !== null) return Math.max(0, endsAt - now);
@@ -33,7 +42,7 @@ export function displayMs(node: RunNode, now = Date.now()): number {
 export function hasHitZero(node: RunNode, now = Date.now()): boolean {
   return (
     node.kind === "timer" &&
-    node.mode === "countdown" &&
+    isCountdownLike(node.mode) &&
     node.status === "running" &&
     displayMs(node, now) <= 0
   );

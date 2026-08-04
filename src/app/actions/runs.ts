@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { runNodes, runs } from "@/db/schema";
+import { isCountdownLike } from "@/lib/timer-math";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -21,7 +22,7 @@ export async function startTimer(nodeId: string) {
   if (!node || node.kind !== "timer" || node.status === "completed") return;
 
   const now = new Date();
-  if (node.mode === "countdown") {
+  if (isCountdownLike(node.mode)) {
     const remaining = node.remainingMs ?? node.durationMs ?? 0;
     if (remaining <= 0) return;
     await db
@@ -50,7 +51,7 @@ export async function pauseTimer(nodeId: string) {
   if (!node || node.kind !== "timer" || node.status !== "running") return;
 
   const now = Date.now();
-  if (node.mode === "countdown") {
+  if (isCountdownLike(node.mode)) {
     const remaining = node.endsAt
       ? Math.max(0, node.endsAt.getTime() - now)
       : (node.remainingMs ?? 0);
@@ -97,6 +98,32 @@ export async function resetTimer(nodeId: string) {
   revalidateRun(node.runId);
 }
 
+/** Done on a recurring timer: bump cycle, reset duration, auto-start. */
+export async function cycleRecurringTimer(nodeId: string) {
+  const node = await getNode(nodeId);
+  if (!node || node.kind !== "timer" || node.mode !== "recurring") return;
+  if (node.status === "completed") return;
+
+  const duration = node.durationMs ?? 0;
+  const now = new Date();
+  const shouldRun = duration > 0;
+
+  await db
+    .update(runNodes)
+    .set({
+      cycleCount: (node.cycleCount ?? 0) + 1,
+      remainingMs: duration,
+      elapsedMs: 0,
+      status: shouldRun ? "running" : "paused",
+      endsAt: shouldRun ? new Date(now.getTime() + duration) : null,
+      runningSince: null,
+      completedAt: null,
+    })
+    .where(eq(runNodes.id, nodeId));
+  revalidateRun(node.runId);
+}
+
+/** Complete for real (and Done on non-recurring timers). */
 export async function completeTimer(nodeId: string) {
   const node = await getNode(nodeId);
   if (!node || node.kind !== "timer") return;
@@ -106,7 +133,7 @@ export async function completeTimer(nodeId: string) {
   let elapsedMs = node.elapsedMs ?? 0;
 
   if (node.status === "running") {
-    if (node.mode === "countdown" && node.endsAt) {
+    if (isCountdownLike(node.mode) && node.endsAt) {
       remainingMs = Math.max(0, node.endsAt.getTime() - now);
     }
     if (node.mode === "stopwatch" && node.runningSince) {
@@ -149,7 +176,7 @@ export async function setTimerMs(nodeId: string, ms: number) {
   const safe = Math.max(0, Math.floor(ms));
   const wasRunning = node.status === "running";
 
-  if (node.mode === "countdown") {
+  if (isCountdownLike(node.mode)) {
     await db
       .update(runNodes)
       .set({

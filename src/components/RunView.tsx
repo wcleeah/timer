@@ -2,6 +2,7 @@
 
 import {
   completeTimer,
+  cycleRecurringTimer,
   pauseTimer,
   resetTimer,
   setTimerMs,
@@ -11,7 +12,13 @@ import {
 } from "@/app/actions/runs";
 import { DurationFields } from "@/components/DurationFields";
 import type { RunNode } from "@/db/schema";
-import { displayMs, formatDuration, hasHitZero } from "@/lib/timer-math";
+import {
+  displayMs,
+  formatDuration,
+  formatModeLabel,
+  hasHitZero,
+  isCountdownLike,
+} from "@/lib/timer-math";
 import { patchTreeNode, type TreeNode } from "@/lib/tree";
 import { useRouter } from "next/navigation";
 import {
@@ -85,7 +92,7 @@ function LiveTime({
 
 function optimisticStart(node: RunNode): Partial<RunNode> {
   const now = Date.now();
-  if (node.mode === "countdown") {
+  if (isCountdownLike(node.mode)) {
     const remaining = node.remainingMs ?? node.durationMs ?? 0;
     return {
       status: "running",
@@ -102,7 +109,7 @@ function optimisticStart(node: RunNode): Partial<RunNode> {
 
 function optimisticPause(node: RunNode): Partial<RunNode> {
   const now = Date.now();
-  if (node.mode === "countdown") {
+  if (isCountdownLike(node.mode)) {
     const endsAt = asDate(node.endsAt);
     const remaining = endsAt
       ? Math.max(0, endsAt.getTime() - now)
@@ -136,6 +143,21 @@ function optimisticReset(node: RunNode): Partial<RunNode> {
   };
 }
 
+function optimisticCycle(node: RunNode): Partial<RunNode> {
+  const duration = node.durationMs ?? 0;
+  const now = Date.now();
+  const shouldRun = duration > 0;
+  return {
+    cycleCount: (node.cycleCount ?? 0) + 1,
+    remainingMs: duration,
+    elapsedMs: 0,
+    status: shouldRun ? "running" : "paused",
+    endsAt: shouldRun ? new Date(now + duration) : null,
+    runningSince: null,
+    completedAt: null,
+  };
+}
+
 function optimisticComplete(node: RunNode): Partial<RunNode> {
   const now = Date.now();
   let remainingMs = node.remainingMs ?? node.durationMs ?? 0;
@@ -144,7 +166,7 @@ function optimisticComplete(node: RunNode): Partial<RunNode> {
   if (node.status === "running") {
     const endsAt = asDate(node.endsAt);
     const runningSince = asDate(node.runningSince);
-    if (node.mode === "countdown" && endsAt) {
+    if (isCountdownLike(node.mode) && endsAt) {
       remainingMs = Math.max(0, endsAt.getTime() - now);
     }
     if (node.mode === "stopwatch" && runningSince) {
@@ -174,13 +196,14 @@ function TimerCard({
   const [now, setNow] = useState(() => Date.now());
   const alarmedRef = useRef(false);
   const endsKey = String(node.endsAt);
+  const recurring = node.mode === "recurring";
   const expired =
     node.status === "running" &&
-    node.mode === "countdown" &&
+    isCountdownLike(node.mode) &&
     hasHitZero(node, now);
 
   useEffect(() => {
-    if (node.status !== "running" || node.mode !== "countdown") return;
+    if (node.status !== "running" || !isCountdownLike(node.mode)) return;
     const id = window.setInterval(() => setNow(Date.now()), 200);
     return () => window.clearInterval(id);
   }, [node.status, node.mode, endsKey]);
@@ -238,13 +261,23 @@ function TimerCard({
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <h3 className="truncate text-sm font-medium">{node.name}</h3>
-        <span className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted">
-          {node.mode}
-        </span>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {recurring ? (
+            <span className="font-mono text-[10px] tabular-nums text-muted">
+              ×{node.cycleCount ?? 0}
+            </span>
+          ) : null}
+          <span
+            className="rounded bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] uppercase text-muted"
+            title={recurring ? "Recurring" : undefined}
+          >
+            {formatModeLabel(node.mode)}
+          </span>
+        </div>
       </div>
       <div className="mb-2">
         <LiveTime
-          key={`${node.id}-${node.status}-${String(node.endsAt)}-${String(node.runningSince)}`}
+          key={`${node.id}-${node.status}-${String(node.endsAt)}-${String(node.runningSince)}-${node.cycleCount}`}
           node={node}
           expired={expired}
         />
@@ -280,7 +313,7 @@ function TimerCard({
                     patchTreeNode(
                       tree,
                       node.id,
-                      node.mode === "countdown"
+                      isCountdownLike(node.mode)
                         ? {
                             remainingMs: ms,
                             status:
@@ -357,13 +390,37 @@ function TimerCard({
               onClick={() =>
                 runAction(
                   (tree) =>
-                    patchTreeNode(tree, node.id, optimisticComplete(node)),
-                  () => completeTimer(node.id),
+                    patchTreeNode(
+                      tree,
+                      node.id,
+                      recurring
+                        ? optimisticCycle(node)
+                        : optimisticComplete(node),
+                    ),
+                  () =>
+                    recurring
+                      ? cycleRecurringTimer(node.id)
+                      : completeTimer(node.id),
                 )
               }
             >
               Done
             </button>
+            {recurring ? (
+              <button
+                type="button"
+                className="rounded-md border border-border px-2.5 py-1.5 text-xs text-muted hover:bg-surface-2 hover:text-foreground"
+                onClick={() =>
+                  runAction(
+                    (tree) =>
+                      patchTreeNode(tree, node.id, optimisticComplete(node)),
+                    () => completeTimer(node.id),
+                  )
+                }
+              >
+                Complete for real
+              </button>
+            ) : null}
           </>
         ) : (
           <button

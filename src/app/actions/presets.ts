@@ -80,7 +80,7 @@ export async function updatePresetNode(input: {
   presetId: string;
   name?: string;
   note?: string;
-  mode?: "countdown" | "stopwatch";
+  mode?: "countdown" | "stopwatch" | "recurring";
   durationMs?: number | null;
 }) {
   const patch: Partial<typeof presetNodes.$inferInsert> = {};
@@ -200,8 +200,12 @@ export async function startRunFromPreset(
       nodes.map((node) => {
         const isTimer = node.kind === "timer";
         const remainingMs = isTimer ? (node.durationMs ?? 0) : null;
+        const countdownLike =
+          node.mode === "countdown" || node.mode === "recurring";
         const shouldStart =
-          startAll && isTimer && (node.mode === "stopwatch" || (remainingMs ?? 0) > 0);
+          startAll &&
+          isTimer &&
+          (node.mode === "stopwatch" || (countdownLike && (remainingMs ?? 0) > 0));
 
         return {
           id: idMap.get(node.id)!,
@@ -216,8 +220,9 @@ export async function startRunFromPreset(
           status: shouldStart ? "running" : "idle",
           remainingMs,
           elapsedMs: 0,
+          cycleCount: 0,
           endsAt:
-            shouldStart && node.mode === "countdown" && remainingMs != null
+            shouldStart && countdownLike && remainingMs != null
               ? new Date(now.getTime() + remainingMs)
               : null,
           runningSince:
