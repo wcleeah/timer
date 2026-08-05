@@ -65,7 +65,7 @@ export async function addPresetNode(input: {
     name: input.name?.trim() || (isTimer ? "New timer" : "New group"),
     sortOrder,
     mode: isTimer ? "countdown" : null,
-    durationMs: isTimer ? 25 * 60_000 : null,
+    durationMs: isTimer ? 0 : null,
     note: "",
   });
   await db

@@ -14,6 +14,10 @@ function partValue(n: number): string {
   return n === 0 ? "" : String(n);
 }
 
+function selectAllOnFocus(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.select();
+}
+
 export function DurationFields({
   ms,
   onSave,
@@ -49,6 +53,7 @@ export function DurationFields({
           className={field}
           value={hours}
           onChange={(e) => setHours(normalizeDigits(e.target.value))}
+          onFocus={selectAllOnFocus}
           onBlur={commit}
           inputMode="numeric"
           placeholder="0"
@@ -64,6 +69,7 @@ export function DurationFields({
           className={field}
           value={minutes}
           onChange={(e) => setMinutes(normalizeDigits(e.target.value))}
+          onFocus={selectAllOnFocus}
           onBlur={commit}
           inputMode="numeric"
           placeholder="0"
@@ -79,6 +85,7 @@ export function DurationFields({
           className={field}
           value={seconds}
           onChange={(e) => setSeconds(normalizeDigits(e.target.value))}
+          onFocus={selectAllOnFocus}
           onBlur={commit}
           inputMode="numeric"
           placeholder="0"
