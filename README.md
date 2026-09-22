@@ -7,7 +7,7 @@ Presets and the current run live in the browser (`localStorage`). There is no da
 - serves the app
 - holds in-memory push jobs until they fire, are cancelled, or the process restarts
 
-A deploy or restart drops pending notifications. The open run on the device is unchanged until you tap End run.
+A deploy or restart drops pending notifications and mints a new VAPID pair. The next time someone opens the app and uses Notify, the client re-subscribes. The open run on the device is unchanged until you tap End run.
 
 ## Local
 
@@ -18,24 +18,11 @@ bun run dev
 
 Open http://localhost:3000
 
-First boot writes `.vapid.json` if `VAPID_*` env vars are unset. Chrome allows push on localhost after you grant notification permission.
+Chrome allows push on localhost after you grant notification permission.
 
 ## Production
 
-Set stable VAPID keys so subscriptions survive deploys:
-
-```bash
-bun run vapid
-```
-
-Then set:
-
-- `PORT` (Railway provides this)
-- `VAPID_PUBLIC_KEY`
-- `VAPID_PRIVATE_KEY`
-- `VAPID_SUBJECT` (a `mailto:` or `https:` URL)
-
-`bun run start` serves the app. HTTPS is required for install and push (localhost excepted).
+`bun run start` serves the app. `PORT` comes from the host (Railway). HTTPS is required for install and push (localhost excepted). No other env vars.
 
 ## PWA
 

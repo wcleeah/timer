@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "bun --watch server.ts",
     "start": "bun server.ts",
-    "test": "bun test",
-    "vapid": "bun scripts/vapid.ts"
+    "test": "bun test"
   },
   "dependencies": {
     "web-push": "^3.6.7"

@@ -1,10 +1,8 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import webpush from "web-push";
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(import.meta.dir, "public");
-const VAPID_FILE = path.join(import.meta.dir, ".vapid.json");
 const MAX_TIMEOUT = 2_147_483_647;
 const jobs = new Map<string, Job>();
 
@@ -23,40 +21,8 @@ type Job = {
   timeout: ReturnType<typeof setTimeout>;
 };
 
-type Vapid = {
-  publicKey: string;
-  privateKey: string;
-  subject: string;
-};
-
-function loadVapid(): Vapid {
-  const fromEnv =
-    process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY
-      ? {
-          publicKey: process.env.VAPID_PUBLIC_KEY,
-          privateKey: process.env.VAPID_PRIVATE_KEY,
-          subject: process.env.VAPID_SUBJECT || "mailto:timer@localhost",
-        }
-      : null;
-  if (fromEnv) return fromEnv;
-
-  if (existsSync(VAPID_FILE)) {
-    return JSON.parse(readFileSync(VAPID_FILE, "utf8")) as Vapid;
-  }
-
-  const generated = webpush.generateVAPIDKeys();
-  const vapid: Vapid = {
-    publicKey: generated.publicKey,
-    privateKey: generated.privateKey,
-    subject: "mailto:timer@localhost",
-  };
-  writeFileSync(VAPID_FILE, JSON.stringify(vapid, null, 2));
-  console.warn("Generated VAPID keys in .vapid.json — set VAPID_* env vars in production so keys survive deploys.");
-  return vapid;
-}
-
-const vapid = loadVapid();
-webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey);
+const vapid = webpush.generateVAPIDKeys();
+webpush.setVapidDetails("mailto:timer@localhost", vapid.publicKey, vapid.privateKey);
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status });
