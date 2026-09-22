@@ -266,6 +266,5 @@ export function renderPreset(root, id) {
     const node = findNode(current?.tree || [], wrap?.dataset.durationId);
     if (!node || (node.durationMs ?? 0) === ms) return;
     persist(current, patchTreeNode(current.tree, node.id, { durationMs: ms }));
-    refresh();
   });
 }
