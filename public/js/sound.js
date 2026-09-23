@@ -6,12 +6,28 @@ function setPlaybackSession() {
   }
 }
 
+function ensureMedia(id, src, { loop = false } = {}) {
+  let el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement("audio");
+    el.id = id;
+    el.preload = "auto";
+    el.playsInline = true;
+    el.setAttribute("playsinline", "");
+    el.setAttribute("webkit-playsinline", "");
+    document.body.appendChild(el);
+  }
+  if (el.getAttribute("src") !== src) el.src = src;
+  el.loop = loop;
+  return el;
+}
+
 function bedEl() {
-  return document.getElementById("timer-bed");
+  return ensureMedia("timer-bed", "/sounds/silence.mp3", { loop: true });
 }
 
 function beepEl() {
-  return document.getElementById("timer-beep");
+  return ensureMedia("timer-beep", "/sounds/beep.mp3");
 }
 
 function playMedia(el) {
@@ -23,30 +39,19 @@ function playMedia(el) {
 export function unlockSound() {
   setPlaybackSession();
   const bed = bedEl();
-  if (bed) {
-    bed.muted = false;
-    bed.loop = true;
-    bed.volume = 1;
-    playMedia(bed);
-  }
+  bed.muted = false;
+  bed.volume = 1;
+  playMedia(bed);
   const beep = beepEl();
-  if (beep) {
-    beep.muted = false;
-    beep.volume = 1;
-    try {
-      beep.load();
-    } catch {
-      // ignore
-    }
-  }
+  beep.muted = false;
+  beep.volume = 1;
 }
 
 export function playBeep() {
   setPlaybackSession();
   const bed = bedEl();
-  if (bed?.paused) playMedia(bed);
+  if (bed.paused) playMedia(bed);
   const beep = beepEl();
-  if (!beep) return;
   beep.muted = false;
   beep.volume = 1;
   try {
@@ -58,7 +63,7 @@ export function playBeep() {
 }
 
 export function releaseSound() {
-  for (const el of [bedEl(), beepEl()]) {
+  for (const el of [document.getElementById("timer-bed"), document.getElementById("timer-beep")]) {
     if (!el) continue;
     try {
       el.pause();
