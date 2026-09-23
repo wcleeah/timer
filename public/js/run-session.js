@@ -7,7 +7,7 @@ import {
 import { isCountdownLike } from "./timer-math.js";
 import { walkTree } from "./tree.js";
 import { replacePushJobs } from "./push.js";
-import { unlockSound } from "./sound.js";
+import { releaseSound, unlockSound } from "./sound.js";
 
 export async function syncRunPushes() {
   const run = getActiveRun();
@@ -41,6 +41,7 @@ export async function startRun(presetId, { startAll = false } = {}) {
 }
 
 export async function endRun() {
+  releaseSound();
   saveActiveRun(null);
   await syncRunPushes();
   location.hash = "#/";
