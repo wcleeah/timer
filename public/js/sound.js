@@ -1,9 +1,3 @@
-const BEEP_SRC = "/sounds/beep.wav";
-
-let ctx = null;
-let keepAlive = null;
-let beepEl = null;
-
 function setPlaybackSession() {
   try {
     if ("audioSession" in navigator) navigator.audioSession.type = "playback";
@@ -12,125 +6,65 @@ function setPlaybackSession() {
   }
 }
 
-function getCtx() {
-  if (!ctx) ctx = new AudioContext();
-  return ctx;
+function bedEl() {
+  return document.getElementById("timer-bed");
 }
 
-function resumeCtx() {
-  const audio = getCtx();
-  if (audio.state === "suspended" || audio.state === "interrupted") {
-    audio.resume().catch(() => {});
-  }
-  return audio;
+function beepEl() {
+  return document.getElementById("timer-beep");
 }
 
-function startKeepAlive() {
-  const audio = resumeCtx();
-  if (keepAlive) return;
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.frequency.value = 1;
-  gain.gain.value = 0.00001;
-  osc.connect(gain);
-  gain.connect(audio.destination);
-  osc.start();
-  keepAlive = { osc, gain };
-}
-
-function getBeepEl() {
-  if (!beepEl) {
-    beepEl = new Audio(BEEP_SRC);
-    beepEl.preload = "auto";
-    beepEl.playsInline = true;
-    beepEl.setAttribute("x-webkit-airplay", "deny");
-  }
-  return beepEl;
-}
-
-function blessBeep() {
-  const el = getBeepEl();
-  if (!el.paused && el.volume > 0 && el.currentTime > 0) return;
-  const restore = el.volume || 1;
-  el.muted = false;
-  el.volume = 0;
+function playMedia(el) {
+  if (!el) return;
   const play = el.play();
-  if (play && typeof play.then === "function") {
-    play
-      .then(() => {
-        el.pause();
-        el.currentTime = 0;
-        el.volume = restore;
-      })
-      .catch(() => {
-        el.volume = restore;
-      });
-  } else {
-    el.volume = restore;
-  }
-}
-
-function playOscillatorBeep(audio) {
-  const osc = audio.createOscillator();
-  const gain = audio.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(880, audio.currentTime);
-  gain.gain.setValueAtTime(0.35, audio.currentTime);
-  osc.connect(gain);
-  gain.connect(audio.destination);
-  const now = audio.currentTime;
-  osc.start(now);
-  osc.frequency.setValueAtTime(988, now + 0.22);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.55);
-  osc.stop(now + 0.6);
+  if (play && typeof play.catch === "function") play.catch(() => {});
 }
 
 export function unlockSound() {
-  try {
-    setPlaybackSession();
-    resumeCtx();
-    startKeepAlive();
-    blessBeep();
-  } catch {
-    // ignore audio unlock failures
+  setPlaybackSession();
+  const bed = bedEl();
+  if (bed) {
+    bed.muted = false;
+    bed.loop = true;
+    bed.volume = 1;
+    playMedia(bed);
   }
-}
-
-export function releaseSound() {
-  try {
-    if (keepAlive) {
-      keepAlive.osc.stop();
-      keepAlive.osc.disconnect();
-      keepAlive.gain.disconnect();
-      keepAlive = null;
+  const beep = beepEl();
+  if (beep) {
+    beep.muted = false;
+    beep.volume = 1;
+    try {
+      beep.load();
+    } catch {
+      // ignore
     }
-    if (beepEl) {
-      beepEl.pause();
-      beepEl.currentTime = 0;
-    }
-  } catch {
-    keepAlive = null;
   }
 }
 
 export function playBeep() {
+  setPlaybackSession();
+  const bed = bedEl();
+  if (bed?.paused) playMedia(bed);
+  const beep = beepEl();
+  if (!beep) return;
+  beep.muted = false;
+  beep.volume = 1;
   try {
-    setPlaybackSession();
-    const audio = resumeCtx();
-    startKeepAlive();
-    const el = getBeepEl();
-    el.muted = false;
-    el.pause();
-    el.currentTime = 0;
-    const play = el.play();
-    if (play && typeof play.catch === "function") {
-      play.catch(() => playOscillatorBeep(audio));
-    }
+    beep.currentTime = 0;
   } catch {
+    // iOS can throw if the element is not ready.
+  }
+  playMedia(beep);
+}
+
+export function releaseSound() {
+  for (const el of [bedEl(), beepEl()]) {
+    if (!el) continue;
     try {
-      playOscillatorBeep(resumeCtx());
+      el.pause();
+      el.currentTime = 0;
     } catch {
-      // ignore audio failures
+      // ignore
     }
   }
 }

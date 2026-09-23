@@ -30,6 +30,6 @@ Apple Web Push rejects VAPID subjects like `mailto:timer@localhost` (`403 BadJwt
 
 Add to Home Screen from the browser. Notifications need that install on iOS. Per-timer **Sound** and **Notify** toggles live on countdown/recurring timers in the preset editor.
 
-On-page time-up audio uses the media playback session (same class as YouTube in Safari) so the iOS Silent switch does not mute it. Unlock happens on Start. There is no background ring after you leave the app.
+On-page time-up audio starts a looping HTML media bed on Start (same path as YouTube in Safari) so the iOS Silent switch does not mute the beep while you stay on the run. There is no background ring after you leave the app. Control Center may show Now Playing during an open run.
 
 Live: previously https://timer-production-f82d.up.railway.app

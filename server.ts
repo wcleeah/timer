@@ -176,6 +176,9 @@ const server = Bun.serve({
 
     const file = safeFile(url.pathname);
     if (file && (await file.exists())) {
+      if (url.pathname.endsWith(".mp3")) {
+        return new Response(file, { headers: { "content-type": "audio/mpeg" } });
+      }
       return new Response(file);
     }
     return new Response("Not found", { status: 404 });

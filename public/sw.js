@@ -1,4 +1,4 @@
-const CACHE = "timer-v3";
+const CACHE = "timer-v4";
 const PRECACHE = [
   "/",
   "/index.html",
@@ -23,7 +23,8 @@ const PRECACHE = [
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/apple-touch-icon.png",
-  "/sounds/beep.wav",
+  "/sounds/beep.mp3",
+  "/sounds/silence.mp3",
 ];
 
 self.addEventListener("install", (event) => {
