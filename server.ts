@@ -130,7 +130,11 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, jobs: jobs.size });
+      return json({
+        ok: true,
+        jobs: jobs.size,
+        vapidSubject: resolveVapidSubject(process.env.VAPID_SUBJECT),
+      });
     }
 
     if (url.pathname === "/api/vapid-public-key") {
