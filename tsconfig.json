@@ -7,5 +7,5 @@
     "noEmit": true,
     "types": ["bun"]
   },
-  "include": ["server.ts"]
+  "include": ["server.ts", "vapid-subject.ts"]
 }

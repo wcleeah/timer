@@ -1,5 +1,6 @@
 import path from "node:path";
 import webpush from "web-push";
+import { resolveVapidSubject } from "./vapid-subject";
 
 const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(import.meta.dir, "public");
@@ -22,7 +23,11 @@ type Job = {
 };
 
 const vapid = webpush.generateVAPIDKeys();
-webpush.setVapidDetails("mailto:timer@localhost", vapid.publicKey, vapid.privateKey);
+webpush.setVapidDetails(
+  resolveVapidSubject(process.env.VAPID_SUBJECT),
+  vapid.publicKey,
+  vapid.privateKey,
+);
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status });
@@ -95,7 +100,7 @@ async function fire(key: string) {
         body: job.body,
         url: "/#/run",
       }),
-      { TTL: 120 },
+      { TTL: 3600, urgency: "high" },
     );
   } catch (error) {
     const status = (error as { statusCode?: number }).statusCode;
@@ -125,7 +130,11 @@ const server = Bun.serve({
     const url = new URL(req.url);
 
     if (url.pathname === "/api/health") {
-      return json({ ok: true, jobs: jobs.size });
+      return json({
+        ok: true,
+        jobs: jobs.size,
+        vapidSubject: resolveVapidSubject(process.env.VAPID_SUBJECT),
+      });
     }
 
     if (url.pathname === "/api/vapid-public-key") {

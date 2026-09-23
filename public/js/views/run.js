@@ -356,5 +356,6 @@ export function renderRun(root) {
   });
 
   bindDuration(root, () => {});
+  on(root, "pointerdown", "*", () => unlockSound());
   startTick(root);
 }
