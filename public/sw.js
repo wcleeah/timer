@@ -1,4 +1,4 @@
-const CACHE = "timer-v4";
+const CACHE = "timer-v5";
 const PRECACHE = [
   "/",
   "/index.html",
