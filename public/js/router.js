@@ -24,7 +24,6 @@ export function bindChrome() {
     const themeBtn = event.target.closest("[data-act=theme]");
     if (!themeBtn) return;
     toggleTheme();
-    const label = themeBtn;
-    label.textContent = label.textContent === "Dark" ? "Light" : "Dark";
+    route();
   });
 }

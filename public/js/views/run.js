@@ -7,7 +7,6 @@ import { getActiveRun, saveActiveRun } from "../store.js";
 import {
   displayMs,
   formatDuration,
-  formatModeLabel,
   hasHitZero,
   isCountdownLike,
 } from "../timer-math.js";
@@ -205,18 +204,19 @@ function timerCard(node) {
     .filter(Boolean)
     .join(" ");
 
+  const primaryLabel = node.status === "running" ? "Pause" : node.status === "paused" ? "Resume" : "Start";
   const primary =
     node.status === "running"
-      ? `<button type="button" class="btn btn-xs" data-act="pause" data-id="${esc(node.id)}">Pause</button>`
-      : `<button type="button" class="btn btn-xs btn-accent" data-act="start" data-id="${esc(node.id)}">${node.status === "paused" ? "Resume" : "Start"}</button>`;
+      ? `<button type="button" class="btn btn-accent btn-block" data-act="pause" data-id="${esc(node.id)}">Pause</button>`
+      : `<button type="button" class="btn btn-accent btn-block" data-act="start" data-id="${esc(node.id)}">${primaryLabel}</button>`;
 
   const editing =
     editingId === node.id
-      ? `<div class="mb-2">
+      ? `<div class="edit-time">
           <div data-edit-id="${esc(node.id)}">${durationFieldsHtml(displayMs(node))}</div>
-          <div class="row-wrap">
-            <button type="button" class="btn btn-xs btn-accent" data-act="save-edit" data-id="${esc(node.id)}">Save</button>
-            <button type="button" class="btn btn-xs" data-act="cancel-edit">Cancel</button>
+          <div class="quiet-actions">
+            <button type="button" class="text-btn" data-act="save-edit" data-id="${esc(node.id)}">Save</button>
+            <button type="button" class="text-btn" data-act="cancel-edit">Cancel</button>
           </div>
         </div>`
       : "";
@@ -224,30 +224,33 @@ function timerCard(node) {
   const controls =
     node.status !== "completed"
       ? `${primary}
-         <button type="button" class="btn btn-xs" data-act="reset" data-id="${esc(node.id)}">Reset</button>
-         <button type="button" class="btn btn-xs" data-act="edit" data-id="${esc(node.id)}">Edit</button>
-         <button type="button" class="btn btn-xs btn-danger" data-act="${recurring ? "cycle" : "complete"}" data-id="${esc(node.id)}">Done</button>
-         ${
-           recurring
-             ? `<button type="button" class="btn btn-xs" data-act="complete" data-id="${esc(node.id)}">Complete for real</button>`
-             : ""
-         }`
-      : `<button type="button" class="btn btn-xs" data-act="restore" data-id="${esc(node.id)}">Restore</button>`;
+         <div class="quiet-actions">
+           <button type="button" class="text-btn" data-act="reset" data-id="${esc(node.id)}">Reset</button>
+           <button type="button" class="text-btn" data-act="edit" data-id="${esc(node.id)}">Edit time</button>
+           ${
+             recurring
+               ? `<button type="button" class="text-btn" data-act="cycle" data-id="${esc(node.id)}">Next cycle</button>
+                  <button type="button" class="text-btn text-btn-danger" data-act="complete" data-id="${esc(node.id)}">Finish</button>`
+               : `<button type="button" class="text-btn text-btn-danger" data-act="complete" data-id="${esc(node.id)}">Done</button>`
+           }
+         </div>`
+      : `<button type="button" class="btn btn-block" data-act="restore" data-id="${esc(node.id)}">Restore</button>`;
+
+  const modeLabel =
+    node.mode === "stopwatch" ? "Stopwatch" : node.mode === "recurring" ? "Repeat" : "Countdown";
 
   return `<div class="${classes}" data-card="${esc(node.id)}">
     <div class="timer-card-head">
       <h3>${esc(node.name)}</h3>
       <div class="row">
+        <span class="mode-pill">${esc(modeLabel)}</span>
         ${recurring ? `<span class="cycles">×${node.cycleCount ?? 0}</span>` : ""}
-        <span class="badge" ${recurring ? 'title="Recurring"' : ""}>${esc(formatModeLabel(node.mode))}</span>
       </div>
     </div>
     <span class="timer-display" data-time="${esc(node.id)}">${esc(formatDuration(displayMs(node, now)))}</span>
-    <label class="label mb-2">Note
-      <textarea class="textarea" data-field="note" data-id="${esc(node.id)}">${esc(node.note ?? "")}</textarea>
-    </label>
+    <textarea class="note-field" data-field="note" data-id="${esc(node.id)}" placeholder="Add a note" aria-label="Note" rows="1">${esc(node.note ?? "")}</textarea>
     ${editing}
-    <div class="row-wrap">${controls}</div>
+    ${controls}
   </div>`;
 }
 
@@ -258,7 +261,7 @@ function treeHtml(nodes, depth = 0) {
       if (node.kind === "group") {
         if (!showCompleted && node.children?.length && !anyVisible(node)) return "";
         return `<details class="group" open style="margin-left:${pad}px">
-          <summary class="group-summary"><span class="chevron">▸</span> ${esc(node.name)}</summary>
+          <summary class="group-summary"><span class="chevron" aria-hidden="true"></span>${esc(node.name)}</summary>
           ${treeHtml(node.children || [], depth + 1)}
         </details>`;
       }
@@ -277,22 +280,17 @@ export function renderRun(root) {
   }
 
   root.innerHTML = page(`
-    ${headerHtml({ backHref: "#/", backLabel: "← Presets" })}
-    <div class="mb-3">
-      <div class="row" style="justify-content:space-between">
-        <h1 class="page-title grow">${esc(run.presetName)}</h1>
-        <span class="badge">run</span>
-      </div>
-      <p class="mono-meta">${esc(new Date(run.startedAt).toLocaleString())}</p>
+    ${headerHtml({ backHref: "#/", backLabel: "Presets" })}
+    <div class="intro">
+      <h1 class="page-title">${esc(run.presetName)}</h1>
+      <p class="mono-meta">Started ${esc(new Date(run.startedAt).toLocaleString())}</p>
     </div>
-    <label class="check mb-2">
+    <label class="switch">
+      <span>Show completed</span>
       <input type="checkbox" data-act="show-completed" ${showCompleted ? "checked" : ""} />
-      Show completed
     </label>
     <div class="list">${treeHtml(run.tree || []) || `<p class="empty">No timers in this run.</p>`}</div>
-    <div class="mt-6">
-      <button type="button" class="btn btn-block" data-act="end">End run</button>
-    </div>
+    <button type="button" class="btn btn-end" data-act="end">End run</button>
   `);
 
   const refresh = async () => {

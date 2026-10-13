@@ -9,17 +9,17 @@ export function durationFieldsHtml(ms) {
   const parts = splitDuration(ms);
   return `<div class="duration">
     <label>
-      <span>H</span>
+      <span>Hrs</span>
       <input data-part="hours" inputmode="numeric" placeholder="0" aria-label="Hours" value="${esc(partValue(parts.hours))}" />
     </label>
     <span class="colon">:</span>
     <label>
-      <span>M</span>
+      <span>Min</span>
       <input data-part="minutes" inputmode="numeric" placeholder="0" aria-label="Minutes" value="${esc(partValue(parts.minutes))}" />
     </label>
     <span class="colon">:</span>
     <label>
-      <span>S</span>
+      <span>Sec</span>
       <input data-part="seconds" inputmode="numeric" placeholder="0" aria-label="Seconds" value="${esc(partValue(parts.seconds))}" />
     </label>
   </div>`;
