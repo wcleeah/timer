@@ -475,8 +475,16 @@ details[open] > summary .chevron {
 .timer-edit {
   display: grid;
   gap: 0.7rem;
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.group-card .timer-edit {
   border-radius: 1rem;
   background: var(--background);
+  box-shadow: none;
   padding: 0.85rem;
 }
 
@@ -551,8 +559,14 @@ details[open] > summary .chevron {
   outline: none;
 }
 
-.timer-edit .duration input {
-  background: color-mix(in oklab, var(--surface) 70%, var(--background));
+.list > .timer-edit .duration input,
+.list > .timer-edit .textarea {
+  background: var(--background);
+}
+
+.group-card .timer-edit .duration input,
+.group-card .timer-edit .textarea {
+  background: var(--surface);
 }
 
 .duration input::placeholder {
