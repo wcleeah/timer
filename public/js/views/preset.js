@@ -37,67 +37,58 @@ function persist(preset, tree) {
   savePreset({ ...preset, tree: reindexTree(tree) });
 }
 
-function nodeHtml(node, depth) {
-  const pad = Math.min(depth, 6) * 12;
+function modeOption(node, value, label) {
+  return `<label class="segment-item">
+    <input type="radio" name="mode-${esc(node.id)}" data-field="mode" data-id="${esc(node.id)}" value="${value}" ${node.mode === value ? "checked" : ""} />
+    <span>${label}</span>
+  </label>`;
+}
+
+function nodeHtml(node) {
   if (node.kind === "group") {
-    const children = (node.children || [])
-      .map((child) => nodeHtml(child, depth + 1))
-      .join("");
-    return `<div style="margin-left:${pad}px">
-      <div class="node">
-        <div class="node-head">
-          <button type="button" class="collapse" data-act="toggle" data-id="${esc(node.id)}" aria-label="Collapse">
-            <span class="chevron open">▸</span>
-          </button>
-          <input class="node-name" data-field="name" data-id="${esc(node.id)}" value="${esc(node.name)}" />
-          <div class="row-wrap">
-            <button type="button" class="btn btn-xs" data-act="add-group" data-id="${esc(node.id)}">+ Group</button>
-            <button type="button" class="btn btn-xs" data-act="add-timer" data-id="${esc(node.id)}">+ Timer</button>
-            <button type="button" class="btn btn-xs" data-act="up" data-id="${esc(node.id)}">↑</button>
-            <button type="button" class="btn btn-xs" data-act="down" data-id="${esc(node.id)}">↓</button>
-            <button type="button" class="btn btn-xs btn-danger" data-act="del" data-id="${esc(node.id)}">Del</button>
-          </div>
+    const children = (node.children || []).map((child) => nodeHtml(child)).join("");
+    return `<section class="group-card">
+      <div class="group-head">
+        <button type="button" class="collapse" data-act="toggle" data-id="${esc(node.id)}" aria-label="Collapse ${esc(node.name)}">
+          <span class="chevron open" aria-hidden="true"></span>
+        </button>
+        <input class="node-name" data-field="name" data-id="${esc(node.id)}" value="${esc(node.name)}" aria-label="Group name" />
+        <div class="quiet-actions">
+          <button type="button" class="text-btn" data-act="add-group" data-id="${esc(node.id)}">+ Group</button>
+          <button type="button" class="text-btn" data-act="add-timer" data-id="${esc(node.id)}">+ Timer</button>
+          <button type="button" class="text-btn" data-act="up" data-id="${esc(node.id)}">Up</button>
+          <button type="button" class="text-btn" data-act="down" data-id="${esc(node.id)}">Down</button>
+          <button type="button" class="text-btn text-btn-danger" data-act="del" data-id="${esc(node.id)}">Delete</button>
         </div>
       </div>
-      <div data-children="${esc(node.id)}">${children}</div>
-    </div>`;
+      <div class="group-children" data-children="${esc(node.id)}">${children}</div>
+    </section>`;
   }
 
   const cue =
     node.mode === "stopwatch"
       ? ""
-      : `<div class="toggles">
-          <label class="check"><input type="checkbox" data-field="sound" data-id="${esc(node.id)}" ${node.sound ? "checked" : ""} /> Sound</label>
-          <label class="check"><input type="checkbox" data-field="notify" data-id="${esc(node.id)}" ${node.notify ? "checked" : ""} /> Notify</label>
+      : `<div class="cues">
+          <label class="cue"><input type="checkbox" data-field="sound" data-id="${esc(node.id)}" ${node.sound ? "checked" : ""} /><span>Sound</span></label>
+          <label class="cue"><input type="checkbox" data-field="notify" data-id="${esc(node.id)}" ${node.notify ? "checked" : ""} /><span>Notify</span></label>
         </div>`;
 
-  return `<div class="node" style="margin-left:${pad}px">
-    <div class="node-head mb-2">
-      <span class="badge">timer</span>
-      <input class="node-name" data-field="name" data-id="${esc(node.id)}" value="${esc(node.name)}" />
+  return `<article class="timer-edit">
+    <input class="node-name" data-field="name" data-id="${esc(node.id)}" value="${esc(node.name)}" aria-label="Timer name" />
+    <div class="segment" role="radiogroup" aria-label="Mode">
+      ${modeOption(node, "countdown", "Countdown")}
+      ${modeOption(node, "stopwatch", "Stopwatch")}
+      ${modeOption(node, "recurring", "Repeat")}
     </div>
-    <div class="grid-sm-2 mb-2">
-      <label class="label">Mode
-        <select class="select" data-field="mode" data-id="${esc(node.id)}">
-          <option value="countdown" ${node.mode === "countdown" ? "selected" : ""}>Countdown</option>
-          <option value="stopwatch" ${node.mode === "stopwatch" ? "selected" : ""}>Stopwatch</option>
-          <option value="recurring" ${node.mode === "recurring" ? "selected" : ""}>∞ Recurring</option>
-        </select>
-      </label>
-      <div class="label">Duration
-        <div data-duration-id="${esc(node.id)}">${durationFieldsHtml(node.durationMs ?? 0)}</div>
-      </div>
-    </div>
-    <label class="label mb-2">Note
-      <textarea class="textarea" data-field="note" data-id="${esc(node.id)}">${esc(node.note ?? "")}</textarea>
-    </label>
+    <div data-duration-id="${esc(node.id)}">${durationFieldsHtml(node.durationMs ?? 0)}</div>
+    <textarea class="textarea" data-field="note" data-id="${esc(node.id)}" placeholder="Add a note" aria-label="Note">${esc(node.note ?? "")}</textarea>
     ${cue}
-    <div class="row-wrap">
-      <button type="button" class="btn btn-xs" data-act="up" data-id="${esc(node.id)}">↑</button>
-      <button type="button" class="btn btn-xs" data-act="down" data-id="${esc(node.id)}">↓</button>
-      <button type="button" class="btn btn-xs btn-danger" data-act="del" data-id="${esc(node.id)}">Del</button>
+    <div class="quiet-actions">
+      <button type="button" class="text-btn" data-act="up" data-id="${esc(node.id)}">Up</button>
+      <button type="button" class="text-btn" data-act="down" data-id="${esc(node.id)}">Down</button>
+      <button type="button" class="text-btn text-btn-danger" data-act="del" data-id="${esc(node.id)}">Delete</button>
     </div>
-  </div>`;
+  </article>`;
 }
 
 function hasNotify(nodes) {
@@ -128,26 +119,25 @@ export function renderPreset(root, id) {
   root.innerHTML = page(`
     ${headerHtml({
       backHref: "#/",
-      backLabel: "← Presets",
-      actionHtml: `<button type="button" class="link-danger" data-act="delete-preset">Delete</button>`,
+      backLabel: "Presets",
+      actionHtml: `<button type="button" class="text-btn text-btn-danger" data-act="delete-preset">Delete</button>`,
     })}
-    <div class="row mb-3">
-      <input class="name-input" data-field="preset-name" value="${esc(preset.name)}" aria-label="Preset name" />
-    </div>
-    <div class="stack mb-4">
+    <input class="name-input" data-field="preset-name" value="${esc(preset.name)}" aria-label="Preset name" />
+    <div class="stack">
       <button type="button" class="btn btn-accent btn-block" data-act="start">Start run</button>
-      <button type="button" class="btn btn-block" data-act="start-all">Start run · all timers</button>
+      <button type="button" class="btn btn-block" data-act="start-all">Start every timer</button>
+      <p class="hint-quiet">Start run waits. Start every timer begins them all together.</p>
     </div>
     ${notifyHint}
-    <div class="grid-2 mb-2">
-      <button type="button" class="btn btn-xs" data-act="add-root-group">+ Group</button>
-      <button type="button" class="btn btn-xs btn-soft" data-act="add-root-timer">+ Timer</button>
+    <div class="add-row">
+      <button type="button" class="btn" data-act="add-root-group">+ Group</button>
+      <button type="button" class="btn btn-soft" data-act="add-root-timer">+ Timer</button>
     </div>
     <div class="list">
       ${
         tree.length === 0
-          ? `<p class="empty">Add groups and timers to build this preset.</p>`
-          : tree.map((node) => nodeHtml(node, 0)).join("")
+          ? `<p class="empty">Add a group to organize steps, or a timer to start simple.</p>`
+          : tree.map((node) => nodeHtml(node)).join("")
       }
     </div>
   `);
